@@ -2,13 +2,43 @@
 
 TODO: Write a project description
 
-## Installation
+Cross-platform server/client chat service
+
+Testing is done on:
+  + Fedora 23
+  + ElementaryOS Freya
+  + Windows 7 64bit
+  + Windows 10 64bit
+
+## Prerequisites
+
+TODO: Write prerequisites
+
+*CMake* >= 2.6
+
+## Building
 
 TODO: Describe the installation process
+
+- Create a build/ directory
+- From inside the newly created directory type **cmake ../**
+- Now you can build & compile on your system!
+  + on Windows: open the resulting **VisualStudio** Solution
+  + on GNU/Linux: type **make**
 
 ## Usage
 
 TODO: Write usage instructions
+
+Inside two instances of your favorite terminal emulator:
+ - Launch *build/src/server/tlk_server <port_number>*  
+ - Launch *build/src/client/tlk_client <IP_address> <port_number>*
+
+Where *port_number* must be the same and *IP_address* must be the IP address of the server we're connecting to
+
+e.g. (local machine test):
+  - **./build/src/server/tlk_server 3000**
+  - **./build/src/client/tlk_client 127.0.0.1 3000**
 
 ## Contributing
 
