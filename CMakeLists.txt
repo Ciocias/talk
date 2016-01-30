@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 2.6)
-project (talk_proto)
+project (talk)
 
 #set (CMAKE_BUILD_TYPE Debug)
 
