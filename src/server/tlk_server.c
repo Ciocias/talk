@@ -172,11 +172,28 @@ void * broker_routine (void *arg)
 
     /* Select correct thread queue from list */
     if (LOG) printf("\n\t*** [BRK] Select correct thread queue from list\n\n");
-    ret = linked_list_get(threads_queues, msg -> id, (void **) &node);
-    if (ret == LINKED_LIST_NOK) {
+
+    linked_list_iterator *lli = linked_list_iterator_new(threads_queues);
+    if (lli == NULL) {
       fprintf(stderr, "Cannot get thread specific queue\n");
       exit(EXIT_FAILURE);
     }
+
+    while (lli != NULL) {
+
+      node = NULL;
+      node = (thread_node_t *) linked_list_iterator_getvalue(lli);
+      if (node == NULL) {
+        fprintf(stderr, "Cannot get thread specific queue\n");
+        exit(EXIT_FAILURE);
+      }
+
+      if (node -> id == msg -> id) break;
+
+      lli = linked_list_iterator_next(lli);
+    }
+
+    if (node == NULL) continue;
 
     /* Sort message in correct queue */
     if (LOG) printf("\n\t*** [BRK] Sort message in correct queue\n\n");
@@ -330,7 +347,7 @@ void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
         sprintf(tlk_msg -> content, msg);
 
         if (LOG) printf("\n\t*** [USR] Enqueue in own queue\n\n");
-        ret = tlk_queue_enqueue(t_node -> queue, tlk_msg);
+        ret = tlk_queue_enqueue(waiting_queue, tlk_msg);
         ERROR_HELPER(ret, "Cannot enqueue new message");
 
         /* Check own thread queue (reading) and send to user */
