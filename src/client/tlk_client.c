@@ -14,7 +14,7 @@ tlk_socket_t initialize_client (const char *argv[]) {
   struct in_addr ip_addr;
   unsigned short port_number;
 
-  /* Parse IP address (default: "127.0.0.1") */
+  /* Parse IP address */
   if (LOG) printf("--> Parse IP address\n");
   ret = inet_pton(AF_INET, argv[1], (void *) &ip_addr);
 
@@ -28,7 +28,7 @@ tlk_socket_t initialize_client (const char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
-  /* Parse port number (default: 3000) */
+  /* Parse port number */
   if (LOG) printf("--> Parse port number\n");
   ret = parse_port_number(argv[2], &port_number);
 
@@ -56,10 +56,35 @@ tlk_socket_t initialize_client (const char *argv[]) {
 }
 
 /* Handle chat session */
-void chat_session (tlk_socket_t socket) {
+void chat_session (tlk_socket_t socket, const char *nickname) {
 
     int ret, exit_code;
     tlk_thread_t chat_threads[2];
+
+
+    /* Send JOIN_COMMAND to server */
+    size_t join_command_len;
+    char join_command[MSG_SIZE];
+
+    /* Build command message */
+    snprintf(
+      join_command,
+      strlen(COMMAND_CHAR + JOIN_COMMAND) + strlen(" ") + strlen(nickname),
+      "%c%s %s\n",
+      COMMAND_CHAR, JOIN_COMMAND, nickname
+    );
+    join_command_len = strlen(join_command);
+
+    if (LOG) printf("--> Send JOIN_COMMAND to server\n");
+
+    /* Send command to server */
+    while ( (ret = send(socket, join_command, join_command_len, 0)) < 0 )
+    {
+
+      if (errno == TLK_EINTR) continue;
+      ERROR_HELPER(-1, "Cannot write to socket");
+
+    }
 
     /* Launch receiver thread */
     if (LOG) printf("--> Launch receiver thread\n");
@@ -115,7 +140,7 @@ void * sender (void *arg)
     /* Read from stdin */
     if (LOG) printf("\n\t*** [SND] Read from stdin\n\n");
 
-/* TODO: implement a prompt function */
+    /* TODO: implement a prompt function */
     printf("--> ");
     if (fgets(buf, sizeof(buf), stdin) != (char *) buf) {
       fprintf(stderr, ">>> Error reading from stdin, exiting... <<<\n");
@@ -202,6 +227,9 @@ void * receiver (void *arg)
     if (ret == 0) continue; /* timeout expired */
 
     /* Read when possible */
+    ret = recv_msg(socket, buf, MSG_SIZE);
+    ERROR_HELPER(ret, "Cannot receive message from socket");
+/*
     int read_completed = 0;
     int read_bytes = 0;
     int bytes_left = MSG_SIZE - 1;
@@ -220,17 +248,17 @@ void * receiver (void *arg)
 
       read_completed = bytes_left <= 0 || buf[read_bytes - 1] == '\n';
     }
-
-    if (ret == 0) {
+*/
+//    if (ret == 0) {
       /* Endpoint has closed unexpectedly */
-      if (LOG) printf("\n\t*** [REC] Endpoint returned 0\n\n");
+/*      if (LOG) printf("\n\t*** [REC] Endpoint returned 0\n\n");
       shouldStop = 1;
     } else {
       /* Print data to user */
       if (LOG) printf("\n\t*** [REC] Show data to user\n\n");
-      buf[read_bytes - 1] = '\0';
+//      buf[read_bytes - 1] = '\0';
       printf("[Server] %s\n", buf);
-    }
+//    }
   }
 
   /* Terminate receiver thread */
@@ -242,7 +270,7 @@ int main (int argc, const char *argv[]) {
 
   tlk_socket_t socket;
 
-  if (argc != 3) {
+  if (argc != 4) {
     usage_error_client(argv[0]);
   }
 
@@ -252,7 +280,7 @@ int main (int argc, const char *argv[]) {
 
   /* Handle chat session */
   if (LOG) printf("\n-> Handle chat session\n\n");
-  chat_session(socket);
+  chat_session(socket, argv[3]);
 
   /* Close client */
   if (LOG) printf("\n-> Close client\n\n");
