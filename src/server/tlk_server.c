@@ -1,5 +1,7 @@
 #include "../../include/tlk_server.h"
 
+unsigned int incremental_id = 1;
+
 /* Users handling data */
 tlk_sem_t users_mutex;
 unsigned int current_users;
@@ -107,15 +109,15 @@ void server_main_loop (unsigned short port_number) {
     ret = tlk_sem_wait(&users_mutex);
     ERROR_HELPER(ret, "Cannot wait on users_mutex semaphore");
 
-    /* TODO: assign different value to new_user -> id than current_users */
-    new_user -> id        = current_users;
+    new_user -> id        = incremental_id;
     new_user -> socket    = client_desc;
     new_user -> address   = client_addr;
     new_user -> nickname  = (char *) malloc(NICKNAME_SIZE * sizeof(char));
 
-    /* TODO: assign different value to node -> id than current_users */
     thread_node_t *node = (thread_node_t *) malloc(sizeof(thread_node_t));
-    node -> id = current_users;
+    node -> id = incremental_id;
+
+    incremental_id += 1;
 
     ret = tlk_sem_post(&users_mutex);
     ERROR_HELPER(ret, "Cannot post on users_mutex semaphore");
@@ -202,11 +204,24 @@ void * user_handler (void *arg)
   thread_node_t *t_node;
   tlk_user_t *user = (tlk_user_t *) arg;
 
-  /* TODO: use iterator instead of linked_list_get */
-  ret = linked_list_get(threads_queues, user -> id, (void **) &t_node);
-  if (ret == LINKED_LIST_NOK) {
+  linked_list_iterator *lli = linked_list_iterator_new(threads_queues);
+  if (lli == NULL) {
     fprintf(stderr, "Cannot get thread specific queue\n");
     close_and_free_chat_session(user);
+  }
+
+  while (lli != NULL) {
+
+    t_node = NULL;
+    t_node = (thread_node_t *) linked_list_iterator_getvalue(lli);
+    if (t_node == NULL) {
+      fprintf(stderr, "Cannot get thread specific queue\n");
+      close_and_free_chat_session(user);
+    }
+
+    if (t_node -> id == user -> id) break;
+
+    lli = linked_list_iterator_next(lli);
   }
 
   /* Wait for a join message from client */
