@@ -231,7 +231,12 @@ void * user_handler (void *arg)
   if (join_msg_len < 0) {
     tlk_thread_exit(NULL);
   } else if (parse_join_msg(msg, strlen(msg), user -> nickname) != 0) {
-    fprintf(stderr, "Failed to join\n");
+
+    snprintf(msg, strlen(JOIN_FAILED) + 1, "%s", JOIN_FAILED);
+
+    if (LOG) printf("\n\t*** [USR] Failed to join new user as %s\n\n", user -> nickname);
+    send_msg(user -> socket, msg);
+
     tlk_thread_exit(NULL);
   }
 
@@ -239,15 +244,25 @@ void * user_handler (void *arg)
   if (LOG) printf("\n\t*** [USR] Register new user as %s\n\n", user -> nickname);
   ret = tlk_user_register(user);
   if (ret != 0) {
-    fprintf(stderr, "Failed to register new user\n");
+
+    snprintf(msg, strlen(REGISTER_FAILED) + 1, "%s", REGISTER_FAILED);
+
+    if (LOG) printf("\n\t*** [USR] Failed to register new user as %s\n\n", user -> nickname);
+    send_msg(user -> socket, msg);
+
     tlk_thread_exit(NULL);
   }
+
+  /* If everything runs fine notify the client */
+  snprintf(msg, strlen(JOIN_SUCCESS) + 1, "%s", JOIN_SUCCESS);
+
+  if (LOG) printf("\n\t*** [USR] Successfully registered new user %s!\n\n", user -> nickname);
+  send_msg(user -> socket, msg);
 
   /* Send welcome & help (includes commands list) */
   if (LOG) printf("\n\t*** [USR] Sending welcome and help\n\n");
 
-  size_t welcome_msg_full_size = strlen(WELCOME_MSG) + strlen(user -> nickname);
-  snprintf(msg, welcome_msg_full_size, WELCOME_MSG, user -> nickname);
+  snprintf(msg, strlen(WELCOME_MSG) + strlen(user -> nickname), WELCOME_MSG, user -> nickname);
 
   send_msg(user -> socket, msg);
   send_help(user -> socket);

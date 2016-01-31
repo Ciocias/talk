@@ -30,4 +30,9 @@
 #define TALK_MSG             "%c%s <nickname>  -> Start a talk with <nickname>"
 #define QUIT_MSG             "%c%s             -> Quit session"
 
+/* TMP */
+#define JOIN_FAILED          "Join Error"
+#define JOIN_SUCCESS         "Join Success"
+#define REGISTER_FAILED      "Register Error"
+
 #endif

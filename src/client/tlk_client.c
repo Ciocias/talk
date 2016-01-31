@@ -63,28 +63,56 @@ void chat_session (tlk_socket_t socket, const char *nickname) {
 
 
     /* Send JOIN_COMMAND to server */
-    size_t join_command_len;
     char join_command[MSG_SIZE];
+    size_t join_command_len = strlen(COMMAND_CHAR + JOIN_COMMAND) + strlen(" ") + strlen(nickname) + 1;
 
     /* Build command message */
     snprintf(
       join_command,
-      strlen(COMMAND_CHAR + JOIN_COMMAND) + strlen(" ") + strlen(nickname),
+      join_command_len,
       "%c%s %s\n",
       COMMAND_CHAR, JOIN_COMMAND, nickname
     );
-    join_command_len = strlen(join_command);
-
-    if (LOG) printf("--> Send JOIN_COMMAND to server\n");
 
     /* Send command to server */
-    while ( (ret = send(socket, join_command, join_command_len, 0)) < 0 )
+    if (LOG) printf("--> Send JOIN_COMMAND to server\n");
+    send_msg(socket, join_command);
+
+    /* Check server response for errors */
+    size_t server_res_len;
+    char server_res[MSG_SIZE];
+
+    if (LOG) printf("--> Join sent, waiting for response...\n");
+    server_res_len = recv_msg(socket, server_res, MSG_SIZE);
+
+    if (server_res_len < 0)
     {
 
-      if (errno == TLK_EINTR) continue;
-      ERROR_HELPER(-1, "Cannot write to socket");
+      if (LOG) printf("--> Error reading from server, exiting...\n");
+      exit(EXIT_FAILURE);
 
     }
+    else if (strncmp(server_res, JOIN_FAILED, strlen(JOIN_FAILED)) == 0)
+    {
+
+      if (LOG) printf("--> Join failed, exiting...\n");
+      exit(EXIT_FAILURE);
+
+    }
+    else if (strncmp(server_res, REGISTER_FAILED, strlen(REGISTER_FAILED)) == 0)
+    {
+
+      printf("--> Register failed, exiting...\n");
+      exit(EXIT_FAILURE);
+
+    }
+    else if (strncmp(server_res, JOIN_SUCCESS, strlen(JOIN_SUCCESS)) != 0)
+    {
+
+      if (LOG) printf("--> Server didn't send JOIN_SUCCESS, exiting...\n");
+      exit(EXIT_FAILURE);
+
+    } /* Server sent JOIN_SUCCESS! we are now on-line */
 
     /* Launch receiver thread */
     if (LOG) printf("--> Launch receiver thread\n");
