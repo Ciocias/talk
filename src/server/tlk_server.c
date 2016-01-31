@@ -14,7 +14,6 @@ unsigned short initialize_server (const char *argv[]) {
   int ret;
   unsigned short port = 0;
 
-  /* Parse port number (default: 3000) */
   if (LOG) printf("--> Parse port number\n");
   ret = parse_port_number(argv[1], &port);
 
@@ -37,7 +36,7 @@ unsigned short initialize_server (const char *argv[]) {
   if (LOG) printf("--> Initialize global waiting_queue\n");
   waiting_queue = tlk_queue_new(QUEUE_SIZE);
 
-  if (ret != 0) {
+  if (waiting_queue == NULL) {
     fprintf(stderr, "Cannot create waiting queue with size %d\n", QUEUE_SIZE);
     exit(EXIT_FAILURE);
   }
@@ -45,6 +44,11 @@ unsigned short initialize_server (const char *argv[]) {
   /* Initialize global threads_queues */
   if (LOG) printf("--> Initialize global thread_queues\n");
   threads_queues = linked_list_new();
+
+  if (threads_queues == NULL) {
+    fprintf(stderr, "Cannot create waiting queue with size %d\n", QUEUE_SIZE);
+    exit(EXIT_FAILURE);
+  }
 
   return port;
 }
@@ -115,7 +119,7 @@ void server_main_loop (unsigned short port_number) {
     ERROR_HELPER(ret, "Cannot post on users_mutex semaphore");
 
     node -> queue = tlk_queue_new(QUEUE_SIZE);
-    if (ret != 0) {
+    if (node -> queue == NULL) {
       fprintf(stderr, "Cannot create waiting queue with size %d\n", QUEUE_SIZE);
       exit(EXIT_FAILURE);
     }
@@ -147,10 +151,11 @@ void * broker_routine (void *arg)
 #endif
 {
   if (LOG) printf("\n\t*** [BRK] Broker thread running\n\n");
+  /* TODO: deallocate *msg  */
+  tlk_message_t *msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
   while (1)
   {
     int ret;
-    tlk_message_t *msg = NULL;
     thread_node_t *node;
 
     /* Check for messages in the waiting queue */
@@ -176,6 +181,7 @@ void * broker_routine (void *arg)
       fprintf(stderr, "Cannot enqueue message\n");
       exit(EXIT_FAILURE);
     }
+
   }
 }
 
