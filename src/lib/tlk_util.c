@@ -30,7 +30,7 @@ void usage_error_server(const char *prog_name) {
  * Print usage (client version)
  */
 void usage_error_client(const char *prog_name) {
-  fprintf(stderr, "Usage: %s <IP_address> <port_number>\n", prog_name);
+  fprintf(stderr, "Usage: %s <IP_address> <port_number> <nickname>\n", prog_name);
   exit(EXIT_FAILURE);
 }
 
@@ -57,7 +57,11 @@ void send_msg(tlk_socket_t socket, const char *msg) {
   int ret;
   char msg_to_send[MSG_SIZE];
 
-  snprintf(msg_to_send, strlen(msg), "%s", msg);
+  snprintf(
+    msg_to_send,
+    strlen(msg) + 1,
+    "%s", msg
+  );
 
   int bytes_left = strlen(msg_to_send);
   int bytes_sent = 0;
@@ -111,7 +115,12 @@ int parse_join_msg (char *msg, size_t msg_len, char *nickname) {
   /* Build message prefix only the first time for efficiency */
   if (join_msg_prefix_len == 0) {
 
-    snprintf(join_msg_prefix, strlen("/join "), "%c%s ", COMMAND_CHAR, JOIN_COMMAND);
+    snprintf(
+      join_msg_prefix,
+      strlen("/join "),
+      "%c%s ",
+      COMMAND_CHAR, JOIN_COMMAND
+    );
     join_msg_prefix_len = strlen(join_msg_prefix);
   }
 
@@ -135,22 +144,36 @@ void send_help(tlk_socket_t socket) {
   char msg[MSG_SIZE];
 
   /* Send help message */
-/*  snprintf(msg, 14, "Commands list:"); */
-  send_msg(socket, "Commands List:\n");
+  send_msg(socket, "\n");
+  send_msg(socket, "Commands List\n");
+
 
   /* Send commands list */
-  snprintf(msg, strlen(HELP_MSG) + sizeof(char) + strlen(HELP_COMMAND), HELP_MSG, COMMAND_CHAR, HELP_COMMAND);
+  snprintf(
+    msg,
+    strlen(HELP_MSG) + sizeof(COMMAND_CHAR) + strlen(HELP_COMMAND) + 1,
+    HELP_MSG, COMMAND_CHAR, HELP_COMMAND
+  );
   send_msg(socket, msg);
 
-  snprintf(msg, strlen(JOIN_MSG) + sizeof(char) + strlen(JOIN_COMMAND), JOIN_MSG, COMMAND_CHAR, JOIN_COMMAND);
+  snprintf(
+    msg,
+    strlen(LIST_MSG) + sizeof(COMMAND_CHAR) + strlen(LIST_COMMAND) + 1,
+    LIST_MSG, COMMAND_CHAR, LIST_COMMAND
+  );
   send_msg(socket, msg);
 
-  snprintf(msg, strlen(LIST_MSG) + sizeof(char) + strlen(LIST_COMMAND), LIST_MSG, COMMAND_CHAR, LIST_COMMAND);
+  snprintf(
+    msg,
+    strlen(TALK_MSG) + sizeof(COMMAND_CHAR) + strlen(TALK_COMMAND) + 1,
+    TALK_MSG, COMMAND_CHAR, TALK_COMMAND
+  );
   send_msg(socket, msg);
 
-  snprintf(msg, strlen(TALK_MSG) + sizeof(char) + strlen(TALK_COMMAND), TALK_MSG, COMMAND_CHAR, TALK_COMMAND);
-  send_msg(socket, msg);
-
-  snprintf(msg, strlen(QUIT_MSG) + sizeof(char) + strlen(QUIT_COMMAND), QUIT_MSG, COMMAND_CHAR, QUIT_COMMAND);
+  snprintf(
+    msg,
+    strlen(QUIT_MSG) + sizeof(COMMAND_CHAR) + strlen(QUIT_COMMAND) + 1,
+    QUIT_MSG, COMMAND_CHAR, QUIT_COMMAND
+  );
   send_msg(socket, msg);
 }

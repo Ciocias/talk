@@ -11,7 +11,7 @@
 tlk_socket_t initialize_client (const char *argv[]);
 
 /* Handle chat session */
-void chat_session (tlk_socket_t socket);
+void chat_session (tlk_socket_t socket, const char *nickname);
 
 /* Receiver thread */
 #if defined(_WIN32) && _WIN32

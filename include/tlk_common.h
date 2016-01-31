@@ -25,10 +25,9 @@
 #define TALK_COMMAND         "talk"
 #define QUIT_COMMAND         "quit"
 
-#define HELP_MSG             "  %c%s: Show this help"
-#define JOIN_MSG             "  %c%s <nickname>: Join chat as <nickname>"
-#define LIST_MSG             "  %c%s: List current users"
-#define TALK_MSG             "  %c%s <nickname>: Start a talk with <nickname>"
-#define QUIT_MSG             "  %c%s: Quit session"
+#define HELP_MSG             "%c%s             -> Show this help"
+#define LIST_MSG             "%c%s             -> List current users"
+#define TALK_MSG             "%c%s <nickname>  -> Start a talk with <nickname>"
+#define QUIT_MSG             "%c%s             -> Quit session"
 
 #endif
