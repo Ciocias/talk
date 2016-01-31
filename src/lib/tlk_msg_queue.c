@@ -7,14 +7,16 @@
 tlk_queue_t *tlk_queue_new (int size) {
   tlk_queue_t *aux = (tlk_queue_t *) malloc(sizeof(tlk_queue_t));
 
-  aux -> last_key_value = 1;
-
   tlk_sem_init(&(aux -> empty_count), size);
   tlk_sem_init(&(aux -> fill_count), 0);
   tlk_sem_init(&(aux -> read_mutex), 1);
   tlk_sem_init(&(aux -> write_mutex), 1);
 
-  aux -> queue = min_heap_new();
+  aux -> buffer = (tlk_message_t *) malloc(size * sizeof(tlk_message_t ));
+  aux -> buffer_length = size;
+  aux -> read_index = 0;
+  aux -> write_index = 0;
+
 
   return aux;
 }
@@ -31,8 +33,8 @@ int tlk_queue_enqueue (tlk_queue_t *q, const tlk_message_t *msg) {
 
   ret = tlk_sem_wait(&(q -> write_mutex));
 
-  q -> last_key_value += 1;
-  min_heap_insert(q -> queue, q -> last_key_value, (void *) msg);
+  (q -> buffer)[q -> write_index] =  *msg;
+  q -> write_index = ((q -> write_index) + 1) % (q -> buffer_length);
 
   ret = tlk_sem_post(&(q -> write_mutex));
 
@@ -52,8 +54,8 @@ int tlk_queue_dequeue (tlk_queue_t *q, tlk_message_t *msg) {
 
   ret = tlk_sem_wait(&(q -> read_mutex));
 
-  msg = (tlk_message_t *) (min_heap_remove_min(q -> queue) -> value);
-  q -> last_key_value -= 1;
+  *msg = (q -> buffer)[q -> read_index];
+  q -> read_index = ((q -> read_index) + 1) % (q -> buffer_length);
 
   ret = tlk_sem_post(&(q -> read_mutex));
 
@@ -73,7 +75,7 @@ void tlk_queue_free (tlk_queue_t *q) {
   tlk_sem_destroy(&(q -> read_mutex));
   tlk_sem_destroy(&(q -> write_mutex));
 
-  min_heap_free(q -> queue);
+  free(q -> buffer);
 
   free(q);
 

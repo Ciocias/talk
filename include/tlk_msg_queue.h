@@ -10,12 +10,14 @@
 #include <stdlib.h>
 
 typedef struct _tlk_queue_s {
-  int last_key_value;
   tlk_sem_t empty_count;
   tlk_sem_t fill_count;
   tlk_sem_t read_mutex;
   tlk_sem_t write_mutex;
-  min_heap *queue;
+  tlk_message_t *buffer;
+  unsigned int buffer_length;
+  int read_index;
+  int write_index;
 } tlk_queue_t;
 
 /*
