@@ -107,11 +107,13 @@ void server_main_loop (unsigned short port_number) {
     ret = tlk_sem_wait(&users_mutex);
     ERROR_HELPER(ret, "Cannot wait on users_mutex semaphore");
 
+    /* TODO: assign different value to new_user -> id than current_users */
     new_user -> id        = current_users;
     new_user -> socket    = client_desc;
     new_user -> address   = client_addr;
     new_user -> nickname  = (char *) malloc(NICKNAME_SIZE * sizeof(char));
 
+    /* TODO: assign different value to node -> id than current_users */
     thread_node_t *node = (thread_node_t *) malloc(sizeof(thread_node_t));
     node -> id = current_users;
 
@@ -200,6 +202,7 @@ void * user_handler (void *arg)
   thread_node_t *t_node;
   tlk_user_t *user = (tlk_user_t *) arg;
 
+  /* TODO: use iterator instead of linked_list_get */
   ret = linked_list_get(threads_queues, user -> id, (void **) &t_node);
   if (ret == LINKED_LIST_NOK) {
     fprintf(stderr, "Cannot get thread specific queue\n");
@@ -268,6 +271,7 @@ void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
         } else if (strcmp(msg + 1, LIST_COMMAND) == 0) {
           if (LOG) printf("\n\t*** [USR] User asked the list\n\n");
           /* TODO: implement list command */
+          send_users_list(user -> socket, users_list);
         } else if (strcmp(msg + 1, TALK_COMMAND) == 0) {
           if (LOG) printf("\n\t*** [USR] User asked to talk\n\n");
           /* TODO: implement talk command */

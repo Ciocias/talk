@@ -31,7 +31,7 @@ void usage_error_client (const char *prog_name);
  * Free @user socket and data structure
  * Exit thread on return
  */
-void close_and_free_chat_session(tlk_user_t *user);
+void close_and_free_chat_session (tlk_user_t *user);
 
 /*
  * Send @msg on @socket
@@ -55,6 +55,12 @@ int parse_join_msg (char *msg, size_t msg_len, char *nickname);
  * Send help message and commands list through @socket
  * Returns nothing
  */
-void send_help(tlk_socket_t socket);
+void send_help (tlk_socket_t socket);
+
+/*
+ * Send users @list through @socket as a list of nicknames
+ * Returns nothing
+ */
+void send_users_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]);
 
 #endif

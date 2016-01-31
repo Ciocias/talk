@@ -72,8 +72,9 @@ int tlk_user_delete (tlk_socket_t socket) {
 
       for (; i < current_users - 1; i++) {
         users_list[i] = users_list[i + 1]; /* Shift all elements by 1 */
-        users_list[i] -> id = i;
       }
+
+      users_list[i] = NULL;
       current_users--;
 
       ret = tlk_sem_post(&users_mutex);

@@ -4,7 +4,7 @@
  * Parse network-ordered port number from @input string and put it in @output
  * Returns 0 on success, -1 on failure
  */
-int parse_port_number(const char *input, unsigned short *output) {
+int parse_port_number (const char *input, unsigned short *output) {
   long tmp;
 
   tmp = strtol(input, NULL, 0);
@@ -21,7 +21,7 @@ int parse_port_number(const char *input, unsigned short *output) {
 /*
  * Print usage (server version)
  */
-void usage_error_server(const char *prog_name) {
+void usage_error_server (const char *prog_name) {
   fprintf(stderr, "Usage: %s <port_number>\n", prog_name);
   exit(EXIT_FAILURE);
 }
@@ -29,7 +29,7 @@ void usage_error_server(const char *prog_name) {
 /*
  * Print usage (client version)
  */
-void usage_error_client(const char *prog_name) {
+void usage_error_client (const char *prog_name) {
   fprintf(stderr, "Usage: %s <IP_address> <port_number> <nickname>\n", prog_name);
   exit(EXIT_FAILURE);
 }
@@ -38,7 +38,7 @@ void usage_error_client(const char *prog_name) {
  * Free @user socket and data structure
  * Exit thread on return
  */
-void close_and_free_chat_session(tlk_user_t *user) {
+void close_and_free_chat_session (tlk_user_t *user) {
   fprintf(stderr, "User connection unexpectedly closed\n");
 
   int ret = tlk_socket_close(user -> socket);
@@ -53,7 +53,7 @@ void close_and_free_chat_session(tlk_user_t *user) {
  * Send @msg on @socket
  * Returns nothing
  */
-void send_msg(tlk_socket_t socket, const char *msg) {
+void send_msg (tlk_socket_t socket, const char *msg) {
   int ret;
   char msg_to_send[MSG_SIZE];
 
@@ -83,7 +83,7 @@ void send_msg(tlk_socket_t socket, const char *msg) {
  * Receive @buf_len bytes from @socket and put contents inside @buf
  * Returns true bytes read
  */
-size_t recv_msg(tlk_socket_t socket, char *buf, size_t buf_len) {
+size_t recv_msg (tlk_socket_t socket, char *buf, size_t buf_len) {
   int ret;
   int bytes_read = 0;
 
@@ -139,7 +139,7 @@ int parse_join_msg (char *msg, size_t msg_len, char *nickname) {
  * Send help message and commands list through @socket
  * Returns nothing
  */
-void send_help(tlk_socket_t socket) {
+void send_help (tlk_socket_t socket) {
 
   char msg[MSG_SIZE];
 
@@ -152,28 +152,57 @@ void send_help(tlk_socket_t socket) {
   snprintf(
     msg,
     strlen(HELP_MSG) + sizeof(COMMAND_CHAR) + strlen(HELP_COMMAND) + 1,
-    HELP_MSG, COMMAND_CHAR, HELP_COMMAND
+    HELP_MSG,
+    COMMAND_CHAR, HELP_COMMAND
   );
   send_msg(socket, msg);
 
   snprintf(
     msg,
     strlen(LIST_MSG) + sizeof(COMMAND_CHAR) + strlen(LIST_COMMAND) + 1,
-    LIST_MSG, COMMAND_CHAR, LIST_COMMAND
+    LIST_MSG,
+    COMMAND_CHAR, LIST_COMMAND
   );
   send_msg(socket, msg);
 
   snprintf(
     msg,
     strlen(TALK_MSG) + sizeof(COMMAND_CHAR) + strlen(TALK_COMMAND) + 1,
-    TALK_MSG, COMMAND_CHAR, TALK_COMMAND
+    TALK_MSG,
+    COMMAND_CHAR, TALK_COMMAND
   );
   send_msg(socket, msg);
 
   snprintf(
     msg,
     strlen(QUIT_MSG) + sizeof(COMMAND_CHAR) + strlen(QUIT_COMMAND) + 1,
-    QUIT_MSG, COMMAND_CHAR, QUIT_COMMAND
+    QUIT_MSG,
+    COMMAND_CHAR, QUIT_COMMAND
   );
   send_msg(socket, msg);
+}
+
+/*
+ * Send users @list through @socket as a list of nicknames
+ * Returns nothing
+ */
+void send_users_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
+
+  int i, ret;
+  char msg[MSG_SIZE];
+
+  send_msg(socket, "Users list\n");
+
+  /* Send users list, nickname per nickname */
+  tlk_user_t *aux;
+  for (i = 0; i < MAX_USERS; i++)
+  {
+    if (list[i] != NULL)
+    {
+      aux = list[i] -> nickname;
+      snprintf(msg, strlen(aux) + 1, "%s\n", aux);
+      send_msg(socket, msg);
+    }
+  }
+
 }
