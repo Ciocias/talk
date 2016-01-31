@@ -193,6 +193,8 @@ void * broker_routine (void *arg)
       lli = linked_list_iterator_next(lli);
     }
 
+    if (node == NULL) continue;
+
     /* Sort message in correct queue */
     if (LOG) printf("\n\t*** [BRK] Sort message in correct queue\n\n");
     ret = tlk_queue_enqueue(node -> queue, (const tlk_message_t *) msg);
