@@ -27,7 +27,7 @@ int tlk_user_register (tlk_user_t *user) {
   int i;
   for (i = 0; i < current_users; i++) {
 
-    if ( strcmp(user -> nickname, users_list[i] -> nickname) == 0 ) {
+    if ( strncmp(user -> nickname, users_list[i] -> nickname, strlen(user -> nickname)) == 0 ) {
       ret = tlk_sem_post(&users_mutex);
       ERROR_HELPER(ret, "Cannot post on users_mutex semaphore");
 
@@ -88,4 +88,38 @@ int tlk_user_delete (tlk_socket_t socket) {
   ERROR_HELPER(ret, "Cannot post on users_mutex semaphore");
 
   return ret;
+}
+
+/*
+ *
+ *
+ */
+tlk_user_t *tlk_user_find(char *nickname) {
+
+  int ret, not_found = 0;
+  tlk_user_t *result;
+
+  ret = tlk_sem_wait(&users_mutex);
+  ERROR_HELPER(ret, "Cannot wait on users_mutex semaphore");
+
+  int i;
+  size_t nickname_len = strlen(nickname);
+  for (i = 0; i < current_users; i++) {
+    if (strncmp(nickname, users_list[i] -> nickname, nickname_len) == 0) {
+      result = users_list[i];
+      break;
+    }
+  }
+
+  if (result == NULL || result != users_list[i]) {
+    not_found = 1;
+  }
+
+  ret = tlk_sem_post(&users_mutex);
+  ERROR_HELPER(ret, "Cannot post on users_mutex semaphore");
+
+  if (not_found)
+    return NULL;
+  return result;
+
 }

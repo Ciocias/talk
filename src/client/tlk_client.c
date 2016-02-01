@@ -256,7 +256,7 @@ void * receiver (void *arg)
 
     /* Read when possible */
     ret = recv_msg(socket, buf, MSG_SIZE);
-    ERROR_HELPER(ret, "Cannot receive message from socket");
+/*    ERROR_HELPER(ret, "Cannot receive message from socket"); */
 /*
     int read_completed = 0;
     int read_bytes = 0;
@@ -277,16 +277,19 @@ void * receiver (void *arg)
       read_completed = bytes_left <= 0 || buf[read_bytes - 1] == '\n';
     }
 */
-//    if (ret == 0) {
+    if (ret == -1) {
+
       /* Endpoint has closed unexpectedly */
-/*      if (LOG) printf("\n\t*** [REC] Endpoint returned 0\n\n");
+      if (LOG) printf("\n\t*** [REC] Endpoint returned 0\n\n");
       shouldStop = 1;
+
     } else {
+
       /* Print data to user */
       if (LOG) printf("\n\t*** [REC] Show data to user\n\n");
-//      buf[read_bytes - 1] = '\0';
       printf("[Server] %s\n", buf);
-//    }
+
+    }
   }
 
   /* Terminate receiver thread */

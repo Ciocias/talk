@@ -8,8 +8,14 @@
 #include "tlk_semaphores.h"
 #include "tlk_errors.h"
 
+typedef enum {
+  IDLE,
+  TALKING
+} user_status;
+
 typedef struct _tlk_user_s {
   int id;
+  user_status status;
   tlk_socket_t socket;
   struct sockaddr_in *address;
   char *nickname;
@@ -29,9 +35,15 @@ typedef struct _tlk_message_s {
 int tlk_user_register (tlk_user_t *user);
 
 /*
- * Delete user associated with @socket from extern users_list and deallocates memory, thread-safe 
+ * Delete user associated with @socket from extern users_list and deallocates memory, thread-safe
  * Returns 0 on success, propagates errors on fail
  */
 int tlk_user_delete (tlk_socket_t socket);
+
+/*
+ *
+ *
+ */
+tlk_user_t *tlk_user_find(char *nickname);
 
 #endif

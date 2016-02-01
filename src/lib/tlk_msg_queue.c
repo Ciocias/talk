@@ -17,7 +17,6 @@ tlk_queue_t *tlk_queue_new (int size) {
   aux -> read_index = 0;
   aux -> write_index = 0;
 
-
   return aux;
 }
 
@@ -27,7 +26,6 @@ tlk_queue_t *tlk_queue_new (int size) {
  */
 int tlk_queue_enqueue (tlk_queue_t *q, const tlk_message_t *msg) {
   int ret;
-
 
   ret = tlk_sem_wait(&(q -> empty_count));
 
