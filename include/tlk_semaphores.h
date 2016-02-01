@@ -5,6 +5,8 @@
 
 #include <Windows.h>
 
+#define MAX_SEM_COUNT 2048 /* TODO: check max count */
+
 typedef HANDLE tlk_sem_t;
 
 #elif defined(__linux__) && __linux__

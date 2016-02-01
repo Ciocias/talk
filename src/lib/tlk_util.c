@@ -83,7 +83,7 @@ void send_msg (tlk_socket_t socket, const char *msg) {
  * Receive @buf_len bytes from @socket and put contents inside @buf
  * Returns true bytes read
  */
-int recv_msg (tlk_socket_t socket, char *buf, size_t buf_len) {
+int recv_msg (tlk_socket_t socket, char *buf, int buf_len) {
   int ret;
   int bytes_read = 0;
 
@@ -128,7 +128,12 @@ int parse_join_msg (char *msg, size_t msg_len, char *nickname) {
 
   if (msg_len > join_msg_prefix_len && ret == 0) {
 
-    snprintf(nickname, msg_len, "%s", msg + join_msg_prefix_len + 1);
+    snprintf(
+      nickname,
+      msg_len - (join_msg_prefix_len) + 1,
+      "%s",
+      msg + join_msg_prefix_len + 1
+    );
     return 0;
   } else {
     return -1;
@@ -188,7 +193,7 @@ void send_help (tlk_socket_t socket) {
  */
 void send_users_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
 
-  int i, ret;
+  int i;
   char msg[MSG_SIZE];
 
   send_msg(socket, "Users list\n");
@@ -197,10 +202,14 @@ void send_users_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
   tlk_user_t *aux;
   for (i = 0; i < MAX_USERS; i++)
   {
-    if (list[i] != NULL)
+    aux = list[i];
+    if (aux != NULL)
     {
-      aux = list[i] -> nickname;
-      snprintf(msg, strlen(aux) + 1, "%s\n", aux);
+      snprintf(
+        msg,
+        strlen(aux -> nickname) + 1,
+        "%s",
+        aux -> nickname);
       send_msg(socket, msg);
     }
   }
@@ -214,46 +223,6 @@ void send_users_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
 char talk_msg_prefix[MSG_SIZE];
 size_t talk_msg_prefix_len = 0;
 
-char *parse_talkmsg_target(char msg[MSG_SIZE]) {
-
-  int ret;
-  char *nickname[NICKNAME_SIZE];
-  size_t msg_len = strlen(msg);
-
-  /* Build message prefix only the first time for efficiency */
-/*  printf("\n\nBuild msg prefix only first time\n\n");
-  if (talk_msg_prefix_len == 0) {
-    printf("\n\nfirst time\n\n");
-*/
-/*
-    snprintf(
-      talk_msg_prefix,
-      strlen(COMMAND_CHAR) + strlen(TALK_COMMAND) + 1,
-      "%c%s ",
-      COMMAND_CHAR, TALK_COMMAND
-    );
-
-
-    printf("\n\ntalk_msg_prefix: %s\n\n", talk_msg_prefix);
-
-    talk_msg_prefix_len = strlen(talk_msg_prefix);
-  }
-*/
-  ret = strncmp(msg, "/talk", strlen("/talk"));
-  printf("\n\nstrncmp(msg, talk_msg, prefix) -> %d\n\n", ret);
-
-  if (msg_len > talk_msg_prefix_len && ret == 0) {
-    printf("\n\nmsg_len > talk_msg_prefix_len && ret == 0\n\n");
-
-    snprintf(nickname, msg, "%s", msg + strlen("/talk") + 1);
-
-printf("\n\nafter snprintf: %s\n\n", nickname);
-    return nickname;
-
-  } else {
-
-    return NULL;
-
-  }
+void parse_talkmsg_target(char msg[MSG_SIZE]) {
 
 }

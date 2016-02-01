@@ -39,6 +39,13 @@ DWORD WINAPI user_handler (LPVOID arg);
 void * user_handler (void *arg);
 #endif
 
+/* User queue-checking thread */
+#if defined(_WIN32) && _WIN32
+DWORD WINAPI queue_checker_routine (LPVOID arg);
+#elif defined(__linux__) && __linux__
+void * queue_checker_routine (void *arg);
+#endif
+
 /* Chat session handler */
 void user_chat_session (thread_node_t *t_node, tlk_user_t *user);
 

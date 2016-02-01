@@ -34,5 +34,6 @@
 #define JOIN_FAILED          "Join Error"
 #define JOIN_SUCCESS         "Join Success"
 #define REGISTER_FAILED      "Register Error"
+#define USER_NOT_FOUND       "Unable to find user %s"
 
 #endif

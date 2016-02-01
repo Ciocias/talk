@@ -43,7 +43,7 @@ void send_msg (tlk_socket_t socket, const char *msg);
  * Receive @buf_len bytes from @socket and put contents inside @buf
  * Returns true bytes read
  */
-int recv_msg (tlk_socket_t socket, char *buf, size_t buf_len);
+int recv_msg (tlk_socket_t socket, char *buf, int buf_len);
 
 /*
  * Parse nickname from join message
@@ -67,6 +67,6 @@ void send_users_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]);
  *
  *
  */
-char *parse_talkmsg_target(char msg[MSG_SIZE]);
+void parse_talkmsg_target(char msg[MSG_SIZE]);
 
 #endif

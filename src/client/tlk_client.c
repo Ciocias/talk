@@ -1,6 +1,6 @@
 #include "../../include/tlk_client.h"
 
-/* TODO: add sem for thread safe stdout printing */
+/* TODO: add sem for thread-safe stdout printing */
 
 int shouldStop = 0;
 
@@ -64,7 +64,7 @@ void chat_session (tlk_socket_t socket, const char *nickname) {
 
     /* Send JOIN_COMMAND to server */
     char join_command[MSG_SIZE];
-    size_t join_command_len = strlen(COMMAND_CHAR + JOIN_COMMAND) + strlen(" ") + strlen(nickname) + 1;
+    int join_command_len = 1 + strlen(JOIN_COMMAND) + strlen(" ") + strlen(nickname) + 1;
 
     /* Build command message */
     snprintf(
@@ -116,12 +116,12 @@ void chat_session (tlk_socket_t socket, const char *nickname) {
 
     /* Launch receiver thread */
     if (LOG) printf("--> Launch receiver thread\n");
-    ret = tlk_thread_create(&chat_threads[0], receiver, (tlk_thread_args) socket);
+    ret = tlk_thread_create(&chat_threads[0], receiver, (tlk_thread_args *) &socket);
     GENERIC_ERROR_HELPER(ret, ret, "Cannot create receiver thread");
 
     /* Launch sender thread */
     if (LOG) printf("--> Launch sender thread\n");
-    ret = tlk_thread_create(&chat_threads[1], sender, (tlk_thread_args) socket);
+    ret = tlk_thread_create(&chat_threads[1], sender, (tlk_thread_args *) &socket);
     GENERIC_ERROR_HELPER(ret, ret, "Cannot create sender thread");
 
     /* Wait for termination */
@@ -151,7 +151,7 @@ void * sender (void *arg)
   if (LOG) printf("\n\t*** [SND] Sender thread running\n\n");
 
   int ret;
-  tlk_socket_t socket = (tlk_socket_t) arg;
+  tlk_socket_t *socket = (tlk_socket_t *) arg;
 
   /* Set up close comand */
   if (LOG) printf("\n\t*** [SND] Set up close command\n\n");
@@ -159,7 +159,7 @@ void * sender (void *arg)
   char buf[MSG_SIZE];
   char close_command[MSG_SIZE];
 
-  snprintf(close_command, strlen(COMMAND_CHAR + QUIT_COMMAND), "%c%s\n", COMMAND_CHAR, QUIT_COMMAND);
+  snprintf(close_command, 1 + strlen(QUIT_COMMAND), "%c%s\n", COMMAND_CHAR, QUIT_COMMAND);
 
   size_t close_command_len = strlen(close_command);
 
@@ -183,7 +183,7 @@ void * sender (void *arg)
     if (LOG) printf("\n\t*** [SND] Send message through socket\n\n");
     size_t msg_len = strlen(buf);
 
-    while ( (ret = send(socket, buf, msg_len, 0)) < 0 )
+    while ( (ret = send(*socket, buf, msg_len, 0)) < 0 )
     {
 
       if (errno == TLK_EINTR) continue;
@@ -215,22 +215,19 @@ void * receiver (void *arg)
   if (LOG) printf("\n\t*** [REC] Receiver thread running\n\n");
 
   int ret;
-  tlk_socket_t socket = (tlk_socket_t) arg;
+  tlk_socket_t *socket = (tlk_socket_t *) arg;
 
-  /* Set up close command */
+  /* Set up close command */ /* ????????????? */
   if (LOG) printf("\n\t*** [REC] Set up close command\n\n");
-
   char close_command[MSG_SIZE];
-
   snprintf(close_command, sizeof(char) + strlen(QUIT_COMMAND), "%c%s", COMMAND_CHAR, QUIT_COMMAND);
-
   size_t close_command_len = strlen(close_command);
 
   /* Set up timeout interval */
   if (LOG) printf("\n\t*** [REC] Set up timeout interval\n\n");
   struct timeval timeout;
   fd_set read_descriptors;
-  int nfds = socket + 1;
+  int nfds = *(socket) + 1;
 
   char buf[MSG_SIZE];
   char delimiter[2];
@@ -243,7 +240,7 @@ void * receiver (void *arg)
     timeout.tv_usec = 500000;
 
     FD_ZERO(&read_descriptors);
-    FD_SET(socket, &read_descriptors);
+    FD_SET(*socket, &read_descriptors);
 
     /* Perform select to check the availability of a read desc */
     if (LOG) printf("\n\t*** [REC] Select available read descriptor\n\n");
@@ -255,7 +252,7 @@ void * receiver (void *arg)
     if (ret == 0) continue; /* timeout expired */
 
     /* Read when possible */
-    ret = recv_msg(socket, buf, MSG_SIZE);
+    ret = recv_msg(*socket, buf, MSG_SIZE);
 /*    ERROR_HELPER(ret, "Cannot receive message from socket"); */
 /*
     int read_completed = 0;

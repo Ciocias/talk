@@ -10,6 +10,11 @@ tlk_user_t *users_list[MAX_USERS];
 tlk_queue_t *waiting_queue          = NULL; /* Input queue for broker thread */
 linked_list *threads_queues         = NULL; /* Linked list of threads queues */
 
+typedef struct _queue_thread_arg_s {
+  thread_node_t *node;
+  tlk_socket_t socket;
+} queue_thread_arg_t;
+
 /* Initialize server data */
 unsigned short initialize_server (const char *argv[]) {
 
@@ -87,7 +92,7 @@ void server_main_loop (unsigned short port_number) {
   ret = tlk_socket_listen(server_desc, MAX_CONN_QUEUE);
   ERROR_HELPER(ret, "Cannot listen on socket");
 
-  struct sockaddr_in *client_addr = calloc(1, sizeof(struct sockaddr_in));
+  struct sockaddr_in *client_addr = (struct sockaddr_in *) calloc(1, sizeof(struct sockaddr_in));
 
   /* Wait for incoming connections */
   if (LOG) printf("--> Enter 'wait for incoming connections' loop\n");
@@ -142,7 +147,7 @@ void server_main_loop (unsigned short port_number) {
     PTHREAD_ERROR_HELPER(ret, "Cannot detach newly created thread");
 
     if (LOG) printf("--> Thread created, allocate new space for next client\n");
-    client_addr = calloc(1, sizeof(struct sockaddr_in));
+    client_addr = (struct sockaddr_in *) calloc(1, sizeof(struct sockaddr_in));
   }
 }
 
@@ -162,6 +167,7 @@ void * broker_routine (void *arg)
   {
     int ret;
     thread_node_t *node;
+
 
     /* Check for messages in the waiting queue */
     if (LOG) printf("\n\t*** [BRK] Check for messages in the waiting queue\n\n");
@@ -285,12 +291,51 @@ void * user_handler (void *arg)
   send_msg(user -> socket, msg);
   send_help(user -> socket);
 
+  /* Launch user queue-checking routine */
+  if (LOG) printf("\n-> Launch %s queue-checking routine thread\n\n", user -> nickname);
+
+  tlk_thread_t queue_checker;
+  queue_thread_arg_t *args = (queue_thread_arg_t *) malloc(sizeof(queue_thread_arg_t));
+
+  args -> node = t_node;
+  args -> socket = user -> socket;
+
+  ret = tlk_thread_create(&queue_checker, (tlk_thread_func) queue_checker_routine, (tlk_thread_args) args);
+  PTHREAD_ERROR_HELPER(ret, "Cannot create thread");
+
+  ret = tlk_thread_detach(queue_checker);
+  PTHREAD_ERROR_HELPER(ret, "Cannot detach newly created thread");
+
   /* User chat session */
   if (LOG) printf("\n\t*** [USR] User chat session started\n\n");
   user_chat_session(t_node, user);
 
   /* We do a clean exit inside close_and_free_chat_session() */
   return NULL;
+}
+
+/* User queue-checking thread */
+#if defined(_WIN32) && _WIN32
+
+DWORD WINAPI queue_checker_routine (LPVOID arg)
+#elif defined(__linux__) && __linux__
+
+void * queue_checker_routine (void *arg)
+#endif
+{
+  int ret;
+  tlk_message_t *tlk_msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
+  queue_thread_arg_t *args = (queue_thread_arg_t *) arg;
+
+  while (1)
+  {
+    /* Check own thread queue (reading) and send to user */
+    if (LOG) printf("\n\t*** [USR] Check own thread queue\n\n");
+    ret = tlk_queue_dequeue((args -> node) -> queue, tlk_msg);
+    ERROR_HELPER(ret, "Cannot dequeue message");
+
+    if (tlk_msg != NULL) send_msg(args -> socket, tlk_msg -> content);
+  }
 }
 
 /* Chat session handler */
@@ -334,14 +379,19 @@ void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
           /* Try to start a talking session with the given nickname */
 
           int ret;
-          char *nickname = malloc(NICKNAME_SIZE * sizeof(char));
+          size_t talk_command_len = strlen(TALK_COMMAND) + 1;
+          char *nickname = (char *) malloc(NICKNAME_SIZE * sizeof(char));
           size_t msg_len = strlen(msg);
 
-          ret = strncmp(msg, "/talk", strlen("/talk"));
+          ret = strncmp(msg, COMMAND_CHAR + TALK_COMMAND, talk_command_len);
 
-          if (msg_len > strlen("/talk") && ret == 0) {
+          if (msg_len > talk_command_len && ret == 0) {
 
-            snprintf(nickname, msg, "%s", msg + strlen("/talk") + 1);
+            snprintf(
+              nickname,
+              strlen(msg) - (talk_command_len),
+              "%s", msg + talk_command_len
+            );
 
           }
 
@@ -349,7 +399,7 @@ void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
           if (listener == NULL) {
 
             if (LOG) printf("\n\t*** [USR] Unable to find user %s\n\n", nickname);
-            snprintf(error_msg, "Unable to find user %s", nickname, strlen(nickname));
+            snprintf(error_msg, strlen(USER_NOT_FOUND) + strlen(nickname) + 2, USER_NOT_FOUND, nickname);
             send_msg(user -> socket, error_msg);
 
             continue;
@@ -360,8 +410,8 @@ void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
               user -> status = TALKING;
               listener -> status = TALKING;
             }
-            printf("\n\n%s is %s\n\n", user -> nickname, (user -> status == IDLE ? "IDLE":"TALKING"));
-            printf("\n\n%s is %s\n\n", listener -> nickname, (listener -> status == IDLE ? "IDLE":"TALKING"));
+            if (LOG) printf("\n\nuser is %s\n", (user -> status == IDLE ? "IDLE":"TALKING"));
+            if (LOG) printf("listener is %s\n\n", (listener -> status == IDLE ? "IDLE":"TALKING"));
           }
         } else if (strcmp(msg + 1, QUIT_COMMAND) == 0) {
 
@@ -381,7 +431,7 @@ void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
         /* TODO: implement talk */
         /*
          *  TODO: UPDATE:
-         *  Status system seems to work (not so good for now); some bugs may lurk beneath 
+         *  Status system seems to work (not so good for now); some bugs may lurk beneath
          */
 
         /* Are we talking ? */
@@ -405,15 +455,15 @@ void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
           ERROR_HELPER(ret, "Cannot enqueue new message");
 
           /* Check own thread queue (reading) and send to user */
+/*
           if (LOG) printf("\n\t*** [USR] Check own thread queue\n\n");
           ret = tlk_queue_dequeue(t_node -> queue, tlk_msg);
           ERROR_HELPER(ret, "Cannot dequeue message");
 
           send_msg(user -> socket, tlk_msg -> content);
+*/
         }
       }
-
-
     }
 
     if (len < 0) {

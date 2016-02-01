@@ -8,6 +8,8 @@
 #include "tlk_semaphores.h"
 #include "tlk_errors.h"
 
+#include "string.h"
+
 typedef enum {
   IDLE,
   TALKING

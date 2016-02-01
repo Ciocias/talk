@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include "strings.h"
 
 #define GENERIC_ERROR_HELPER(cond, errCode, msg) do {               \
         if (cond) {                                                 \

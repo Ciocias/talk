@@ -1,2 +1,4 @@
 build
 *sublime*
+*.gch
+*.gcc-flags.json
