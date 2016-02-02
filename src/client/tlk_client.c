@@ -225,7 +225,6 @@ void * receiver (void *arg)
 
   /* Set up timeout interval */
   if (LOG) printf("\n\t*** [REC] Set up timeout interval\n\n");
-  struct timeval timeout;
   fd_set read_descriptors;
   int nfds = *(socket) + 1;
 
@@ -236,48 +235,29 @@ void * receiver (void *arg)
 
   while (!shouldStop) {
 
-    timeout.tv_sec = 1;
-    timeout.tv_usec = 500000;
-
     FD_ZERO(&read_descriptors);
     FD_SET(*socket, &read_descriptors);
 
     /* Perform select to check the availability of a read desc */
     if (LOG) printf("\n\t*** [REC] Select available read descriptor\n\n");
-    ret = select(nfds, &read_descriptors, NULL, NULL, NULL/*&timeout*/);
+    ret = select(nfds, &read_descriptors, NULL, NULL, NULL);
 
-    if (ret == -1 && errno == TLK_EINTR) continue;
-    ERROR_HELPER(ret, "Cannot select read descriptor");
+    if (ret == TLK_SOCKET_ERROR) {
+      /* Interrupt received: retry */
+      if (errno == TLK_EINTR)
+        continue;
 
-    if (ret == 0) continue; /* timeout expired */
-
-    /* Read when possible */
-    ret = recv_msg(*socket, buf, MSG_SIZE);
-/*    ERROR_HELPER(ret, "Cannot receive message from socket"); */
-/*
-    int read_completed = 0;
-    int read_bytes = 0;
-    int bytes_left = MSG_SIZE - 1;
-
-    if (LOG) printf("\n\t*** [REC] Read data\n\n");
-    while (!read_completed) {
-
-      ret = recv(socket, buf + read_bytes, 1, 0);
-
-      if (ret == 0) break;
-      if (ret == -1 && errno == TLK_EINTR) continue;
-      ERROR_HELPER(ret, "Cannot read from socket");
-
-      bytes_left -= ret;
-      read_bytes += ret;
-
-      read_completed = bytes_left <= 0 || buf[read_bytes - 1] == '\n';
+      /* Endpoint has closed unexpectedly */
+      if (LOG) printf("\n\t*** [REC] Endpoint has closed unexpectedly\n\n");
+      shouldStop = 1;
     }
-*/
+
+    /* Read is now possible */
+    ret = recv_msg(*socket, buf, MSG_SIZE);
     if (ret == -1) {
 
       /* Endpoint has closed unexpectedly */
-      if (LOG) printf("\n\t*** [REC] Endpoint returned 0\n\n");
+      if (LOG) printf("\n\t*** [REC] Endpoint has closed unexpectedly\n\n");
       shouldStop = 1;
 
     } else {
