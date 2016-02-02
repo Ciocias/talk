@@ -47,6 +47,6 @@ void * queue_checker_routine (void *arg);
 #endif
 
 /* Chat session handler */
-void user_chat_session (thread_node_t *t_node, tlk_user_t *user);
+void user_chat_session (tlk_user_t *user);
 
 #endif

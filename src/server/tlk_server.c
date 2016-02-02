@@ -281,7 +281,14 @@ void * user_handler (void *arg)
   snprintf(msg, strlen(JOIN_SUCCESS) + 1, "%s", JOIN_SUCCESS);
 
   if (LOG) printf("\n\t*** [USR] Successfully registered new user %s!\n\n", user -> nickname);
-  send_msg(user -> socket, msg);
+  ret = send_msg(user -> socket, msg);
+
+  if (ret == TLK_SOCKET_ERROR) {
+    if (LOG) printf("\n\t*** [USR] Cannot notify the client: delete new user and exit...\n\n");
+
+    tlk_user_delete(user -> socket);
+    tlk_thread_exit(NULL);
+  }
 
   /* Send welcome & help (includes commands list) */
   if (LOG) printf("\n\t*** [USR] Sending welcome and help\n\n");
@@ -308,7 +315,7 @@ void * user_handler (void *arg)
 
   /* User chat session */
   if (LOG) printf("\n\t*** [USR] User chat session started\n\n");
-  user_chat_session(t_node, user);
+  user_chat_session(user);
 
   /* We do a clean exit inside close_and_free_chat_session() */
   return NULL;
@@ -330,16 +337,25 @@ void * queue_checker_routine (void *arg)
   while (1)
   {
     /* Check own thread queue (reading) and send to user */
-    if (LOG) printf("\n\t*** [USR] Check own thread queue\n\n");
+    if (LOG) printf("\n\t*** [QCR] Check own thread queue\n\n");
     ret = tlk_queue_dequeue((args -> node) -> queue, tlk_msg);
-    ERROR_HELPER(ret, "Cannot dequeue message");
+    if (ret) {
+      if (LOG) printf("\n\t*** [QCR] Dequeuing error, exiting...\n\n");
+      tlk_thread_exit(NULL);
+    }
 
-    if (tlk_msg != NULL) send_msg(args -> socket, tlk_msg -> content);
+    if (tlk_msg != NULL) {
+      ret = send_msg(args -> socket, tlk_msg -> content);
+      if (ret == TLK_SOCKET_ERROR) {
+        if (LOG) printf("\n\t*** [QCR] Cannot send message to user: exiting...\n\n");
+        tlk_thread_exit(NULL);
+      }
+    }
   }
 }
 
 /* Chat session handler */
-void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
+void user_chat_session (tlk_user_t *user) {
   int ret;
   int quit = 0;
   tlk_user_t *listener;
@@ -374,10 +390,10 @@ void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
         } else if (strncmp(msg + 1, TALK_COMMAND, strlen(TALK_COMMAND)) == 0) {
 
           if (LOG) printf("\n\t*** [USR] User asked to talk\n\n");
-          /* TODO: implement talk command */
+
+          /* TODO: refactor code into subroutine */
 
           /* Try to start a talking session with the given nickname */
-
           int ret;
           size_t talk_command_len = strlen(TALK_COMMAND) + 1;
           char *nickname = (char *) malloc(NICKNAME_SIZE * sizeof(char));
@@ -400,7 +416,11 @@ void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
 
             if (LOG) printf("\n\t*** [USR] Unable to find user %s\n\n", nickname);
             snprintf(error_msg, strlen(USER_NOT_FOUND) + strlen(nickname) + 2, USER_NOT_FOUND, nickname);
-            send_msg(user -> socket, error_msg);
+            ret = send_msg(user -> socket, error_msg);
+            if (ret == TLK_SOCKET_ERROR) {
+              if (LOG) printf("\n\t*** [USR] Cannot send error_msg to user %s\n\n", user -> nickname);
+              tlk_thread_exit(NULL);
+            }
 
             continue;
           } else {
@@ -409,9 +429,9 @@ void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
               /* Start talking with listener */
               user -> status = TALKING;
               listener -> status = TALKING;
+              if (LOG) printf("\n\nuser is %s\n", (user -> status == IDLE ? "IDLE":"TALKING"));
+              if (LOG) printf("listener is %s\n\n", (listener -> status == IDLE ? "IDLE":"TALKING"));
             }
-            if (LOG) printf("\n\nuser is %s\n", (user -> status == IDLE ? "IDLE":"TALKING"));
-            if (LOG) printf("listener is %s\n\n", (listener -> status == IDLE ? "IDLE":"TALKING"));
           }
         } else if (strcmp(msg + 1, QUIT_COMMAND) == 0) {
 
@@ -421,58 +441,56 @@ void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
         } else {
 
           if (LOG) printf("\n\t*** [USR] User didn't ask\n\n");
-          sprintf(error_msg, "Unknown command, type %c%s to get a list of available commands", COMMAND_CHAR, HELP_COMMAND);
-          send_msg(user -> socket, error_msg);
+          sprintf(error_msg, "Unknown command, type %c%s for a list of available commands", COMMAND_CHAR, HELP_COMMAND);
+          ret = send_msg(user -> socket, error_msg);
+          if (ret == TLK_SOCKET_ERROR) {
+            if (LOG) printf("\n\t*** [USR] Cannot send error_msg to user %s\n\n", user -> nickname);
+            tlk_thread_exit(NULL);
+          }
 
         }
 
       } else {
 
-        /* TODO: implement talk */
-        /*
-         *  TODO: UPDATE:
-         *  Status system seems to work (not so good for now); some bugs may lurk beneath
-         */
-
         /* Are we talking ? */
-        if (user -> status == TALKING && listener != NULL) {
+        if (user -> status == TALKING) {
+          if (listener != NULL) {
 
-          /* Pack message to send */
-          if (LOG) printf("\n\t*** [USR] Set up message struct\n\n");
-          tlk_msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
+            /* Pack message to send */
+            if (LOG) printf("\n\t*** [USR] Set up message struct\n\n");
+            tlk_msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
 
-          tlk_msg -> id         = listener -> id;
-          tlk_msg -> sender     = user;
-          tlk_msg -> receiver   = listener;
+            tlk_msg -> id         = listener -> id;
+            tlk_msg -> sender     = user;
+            tlk_msg -> receiver   = listener;
 
-          tlk_msg -> content    = (char *) calloc(MSG_SIZE, sizeof(char));
+            tlk_msg -> content    = (char *) calloc(MSG_SIZE, sizeof(char));
 
-          sprintf(tlk_msg -> content, msg);
+            sprintf(tlk_msg -> content, msg);
 
-          /* Send packed message to listener using the queue system */
-          if (LOG) printf("\n\t*** [USR] Enqueue in waiting queue\n\n");
-          ret = tlk_queue_enqueue(waiting_queue, tlk_msg);
-          ERROR_HELPER(ret, "Cannot enqueue new message");
+            /* Send packed message to listener using the queue system */
+            if (LOG) printf("\n\t*** [USR] Enqueue in waiting queue\n\n");
+            ret = tlk_queue_enqueue(waiting_queue, tlk_msg);
+            if (ret) {
+              if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
+              tlk_thread_exit(NULL);
+            }
+          } else {
+            user -> status = IDLE;
+          } /* (listener != NULL) */
+        } /* (user -> status == TALKING) */
+      } /* (msg[0] == COMMAND_CHAR) */
+    } else if (len < 0) {
 
-          /* Check own thread queue (reading) and send to user */
-/*
-          if (LOG) printf("\n\t*** [USR] Check own thread queue\n\n");
-          ret = tlk_queue_dequeue(t_node -> queue, tlk_msg);
-          ERROR_HELPER(ret, "Cannot dequeue message");
-
-          send_msg(user -> socket, tlk_msg -> content);
-*/
-        }
-      }
-    }
-
-    if (len < 0) {
       /* Client connection unexpectedly closed */
       if (LOG) printf("\n\t*** [USR] Client connection unexpectedly closed\n\n");
       quit = -1;
+
     } else {
+
       /* Ignore empty messages */
       if (LOG) printf("\n\t*** [USR] Empty messages are ignored\n\n");
+
     }
 
   } while (!quit);
@@ -483,7 +501,15 @@ void user_chat_session (thread_node_t *t_node, tlk_user_t *user) {
     if (LOG) printf("\n\t*** [USR] User quitting\n\n");
 
     sprintf(msg, "%s, Thank you for talking!", user -> nickname);
+
     send_msg(user -> socket, msg);
+  }
+
+  if (user -> status == TALKING) {
+    if (listener != NULL) {
+      listener -> status = IDLE;
+    }
+    user -> status = IDLE;
   }
 
   ret = tlk_user_delete(user -> socket);

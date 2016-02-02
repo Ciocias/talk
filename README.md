@@ -30,15 +30,18 @@ TODO: Describe the installation process
 
 TODO: Write usage instructions
 
-Inside two instances of your favorite terminal emulator:
- - Launch *build/src/server/tlk_server <port_number>*  
- - Launch *build/src/client/tlk_client <IP_address> <port_number>*
+- Launch build/src/server/**tlk_server** with:
+ + *port_number*
 
-Where *port_number* must be the same and *IP_address* must be the IP address of the server we're connecting to
+- Launch build/src/client/**tlk_client** with:
+ + *IP_address*
+ + *port_number*
+
+Where *port_number* must be equal and *IP_address* must be the IP address of the server we're connecting to
 
 e.g. (local machine test):
-  - **./build/src/server/tlk_server 3000**
-  - **./build/src/client/tlk_client 127.0.0.1 3000**
+  - ./build/src/server/tlk_server 3000
+  - ./build/src/client/tlk_client 127.0.0.1 3000
 
 ## Contributing
 

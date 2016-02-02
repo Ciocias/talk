@@ -76,37 +76,44 @@ void chat_session (tlk_socket_t socket, const char *nickname) {
 
     /* Send command to server */
     if (LOG) printf("--> Send JOIN_COMMAND to server\n");
-    send_msg(socket, join_command);
+    ret = send_msg(socket, join_command);
+
+    if (ret == TLK_SOCKET_ERROR) {
+      if (LOG) printf("--> Error sending JOIN_COMMAND to server\n");
+      exit(EXIT_FAILURE);
+    }
 
     /* Check server response for errors */
-    size_t server_res_len;
+    int server_res_len;
     char server_res[MSG_SIZE];
 
     if (LOG) printf("--> Join sent, waiting for response...\n");
     server_res_len = recv_msg(socket, server_res, MSG_SIZE);
 
-    if (server_res_len < 0)
+    if (server_res_len == TLK_SOCKET_ERROR)
     {
 
       if (LOG) printf("--> Error reading from server, exiting...\n");
       exit(EXIT_FAILURE);
 
-    }
-    else if (strncmp(server_res, JOIN_FAILED, strlen(JOIN_FAILED)) == 0)
+    } else if (server_res_len == TLK_CONN_CLOSED) {
+
+      if (LOG) printf("--> Server closed the connection, exiting...\n");
+      exit(EXIT_FAILURE);
+
+    } else if (strncmp(server_res, JOIN_FAILED, strlen(JOIN_FAILED)) == 0)
     {
 
       if (LOG) printf("--> Join failed, exiting...\n");
       exit(EXIT_FAILURE);
 
-    }
-    else if (strncmp(server_res, REGISTER_FAILED, strlen(REGISTER_FAILED)) == 0)
+    } else if (strncmp(server_res, REGISTER_FAILED, strlen(REGISTER_FAILED)) == 0)
     {
 
       printf("--> Register failed, exiting...\n");
       exit(EXIT_FAILURE);
 
-    }
-    else if (strncmp(server_res, JOIN_SUCCESS, strlen(JOIN_SUCCESS)) != 0)
+    } else if (strncmp(server_res, JOIN_SUCCESS, strlen(JOIN_SUCCESS)) != 0)
     {
 
       if (LOG) printf("--> Server didn't send JOIN_SUCCESS, exiting...\n");
@@ -150,12 +157,12 @@ void * sender (void *arg)
 {
   if (LOG) printf("\n\t*** [SND] Sender thread running\n\n");
 
-  int ret;
   tlk_socket_t *socket = (tlk_socket_t *) arg;
 
   /* Set up close comand */
   if (LOG) printf("\n\t*** [SND] Set up close command\n\n");
 
+  int ret;
   char buf[MSG_SIZE];
   char close_command[MSG_SIZE];
 
@@ -183,12 +190,11 @@ void * sender (void *arg)
     if (LOG) printf("\n\t*** [SND] Send message through socket\n\n");
     size_t msg_len = strlen(buf);
 
-    while ( (ret = send(*socket, buf, msg_len, 0)) < 0 )
-    {
+    ret = send_msg(*socket, buf);
 
-      if (errno == TLK_EINTR) continue;
-      ERROR_HELPER(-1, "Cannot write to socket");
-
+    if (ret == TLK_SOCKET_ERROR) {
+      if (LOG) printf("\n\t*** [SND] Error writing to socket\n\n");
+      shouldStop = -1;
     }
 
     /* Check if message was quit command */
@@ -242,7 +248,10 @@ void * receiver (void *arg)
     FD_ZERO(&read_descriptors);
     FD_SET(*socket, &read_descriptors);
 
-    /* Perform select to check the availability of a read desc */
+    /*
+     *  Select an available read descriptor
+     *  since we don't use a timeout and block on select(),  there's no need to check if return is 0
+     */
     if (LOG) printf("\n\t*** [REC] Select available read descriptor\n\n");
     ret = select(nfds, &read_descriptors, NULL, NULL, NULL);
 
@@ -253,18 +262,28 @@ void * receiver (void *arg)
 
       /* Endpoint has closed unexpectedly */
       if (LOG) printf("\n\t*** [REC] Endpoint has closed unexpectedly\n\n");
-      shouldStop = 1;
+      shouldStop = -1;
+      break;
     }
 
     /* Read is now possible */
     ret = recv_msg(*socket, buf, MSG_SIZE);
-    if (ret == -1) {
+    if (ret == TLK_SOCKET_ERROR) {
 
       /* Endpoint has closed unexpectedly */
       if (LOG) printf("\n\t*** [REC] Endpoint has closed unexpectedly\n\n");
+      shouldStop = -1;
+      break;
+
+    } else if (ret == TLK_CONN_CLOSED) {
+
+      /* Endpoint has closed gracefully */
+      if (LOG) printf("\n\t*** [REC] Endpoint has gracefully closed\n\n");
       shouldStop = 1;
 
     } else {
+
+      /* TODO: Let the client know he's talking with someone */
 
       /* Show received data to user */
       if (LOG) printf("\n\t*** [REC] Show data to user\n\n");

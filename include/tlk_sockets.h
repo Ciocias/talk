@@ -2,6 +2,7 @@
 #define TLK_SOCKETS_H
 
 #define TLK_SOCKET_INVALID -1
+#define TLK_CONN_CLOSED -2
 
 #define TLK_SOCKET_R 0
 #define TLK_SOCKET_W 1

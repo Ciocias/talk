@@ -51,9 +51,9 @@ void close_and_free_chat_session (tlk_user_t *user) {
 
 /*
  * Send @msg on @socket
- * Returns nothing
+ * Returns the number of bytes sent on success, TLK_SOCKET_ERROR on failure
  */
-void send_msg (tlk_socket_t socket, const char *msg) {
+int send_msg (tlk_socket_t socket, const char *msg) {
   int ret;
   char msg_to_send[MSG_SIZE];
 
@@ -69,19 +69,26 @@ void send_msg (tlk_socket_t socket, const char *msg) {
   while (bytes_left > 0) {
       ret = send(socket, msg_to_send + bytes_sent, bytes_left, 0);
 
-      if (ret == -1 && errno == TLK_EINTR) continue;
-      ERROR_HELPER(ret, "Cannot write on socket");
+      if (ret == TLK_SOCKET_ERROR) {
+        if (errno == TLK_EINTR)
+          continue;
+        return TLK_SOCKET_ERROR;
+      }
 
       bytes_left -= ret;
       bytes_sent += ret;
   }
   ret = send(socket, "\n", 1, 0);
-  ERROR_HELPER(ret, "Cannot write on socket");
+
+  return ret;
 }
 
 /*
  * Receive @buf_len bytes from @socket and put contents inside @buf
- * Returns true bytes read
+ * Returns:
+ *  Number of bytes read on success
+ *  TLK_CONN_CLOSED if the endpoint has gracefully closed the connection
+ *  TLK_SOCKET_ERROR on failure
  */
 int recv_msg (tlk_socket_t socket, char *buf, int buf_len) {
   int ret;
@@ -90,9 +97,12 @@ int recv_msg (tlk_socket_t socket, char *buf, int buf_len) {
   while (bytes_read <= buf_len) {
       ret = recv(socket, buf + bytes_read, 1, 0);
 
-      if (ret == 0) return -1;
-      if (ret == -1 && errno == TLK_EINTR) continue;
-      ERROR_HELPER(ret, "Errore nella lettura da socket");
+      if (ret == 0) return TLK_CONN_CLOSED;
+      if (ret == TLK_SOCKET_ERROR) {
+        if (errno == TLK_EINTR)
+          continue;
+        return TLK_SOCKET_ERROR;
+       }
 
       if (buf[bytes_read] == '\n') break;
 

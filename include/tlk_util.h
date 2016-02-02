@@ -37,7 +37,7 @@ void close_and_free_chat_session (tlk_user_t *user);
  * Send @msg on @socket
  * Returns nothing
  */
-void send_msg (tlk_socket_t socket, const char *msg);
+int send_msg (tlk_socket_t socket, const char *msg);
 
 /*
  * Receive @buf_len bytes from @socket and put contents inside @buf

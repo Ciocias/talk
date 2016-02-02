@@ -1,7 +1,7 @@
 #ifndef TLK_ERRORS_H
 #define TLK_ERRORS_H
 
-/* TODO: What should we be doing with that stuff??? */
+/* TODO: What should we do with that stuff??? */
 
 #include <stdio.h>
 #include <stdlib.h>
