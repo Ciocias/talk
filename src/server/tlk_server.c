@@ -377,12 +377,12 @@ void user_chat_session (tlk_user_t *user) {
       if (msg[0] == COMMAND_CHAR) {
         if (LOG) printf("\n\t*** [USR] Handle server commands recognition and execution\n\n");
 
-        if (strcmp(msg + 1, HELP_COMMAND) == 0) {
+        if (strncmp(msg + 1, HELP_COMMAND, strlen(HELP_COMMAND)) == 0) {
 
           if (LOG) printf("\n\t*** [USR] User asked for help\n\n");
           send_help(user -> socket);
 
-        } else if (strcmp(msg + 1, LIST_COMMAND) == 0) {
+        } else if (strncmp(msg + 1, LIST_COMMAND, strlen(LIST_COMMAND)) == 0) {
 
           if (LOG) printf("\n\t*** [USR] User asked the list\n\n");
           send_users_list(user -> socket, users_list);
@@ -433,7 +433,7 @@ void user_chat_session (tlk_user_t *user) {
               if (LOG) printf("listener is %s\n\n", (listener -> status == IDLE ? "IDLE":"TALKING"));
             }
           }
-        } else if (strcmp(msg + 1, QUIT_COMMAND) == 0) {
+        } else if (strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0) {
 
           if (LOG) printf("\n\t*** [USR] User asked to quit\n\n");
           quit = 1;
