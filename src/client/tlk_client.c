@@ -226,13 +226,6 @@ void * receiver (void *arg)
   int ret;
   tlk_socket_t *socket = (tlk_socket_t *) arg;
 
-  /* Set up close command */ /* useful? */
-/*
-  if (LOG) printf("\n\t*** [REC] Set up close command\n\n");
-  char close_command[MSG_SIZE];
-  snprintf(close_command, sizeof(char) + strlen(QUIT_COMMAND), "%c%s", COMMAND_CHAR, QUIT_COMMAND);
-  size_t close_command_len = strlen(close_command);
-*/
   /* Set up timeout interval */
   if (LOG) printf("\n\t*** [REC] Set up timeout interval\n\n");
   fd_set read_descriptors;
