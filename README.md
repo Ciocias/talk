@@ -12,49 +12,57 @@ Testing is done on:
 
 ## Prerequisites
 
-TODO: Write prerequisites
+General
+- **CMake** >= 2.6
 
-*CMake* >= 2.6
+Platform dependent:
+- **make**
+- **VisualStudio**
 
 ## Building
 
-TODO: Describe the installation process
+On **GNU/Linux** there is a basic Makefile to automate everything
 
-- Create a build/ directory
-- From inside the newly created directory type **cmake ../**
-- Now you can build & compile on your system!
-  + on Windows: open the resulting **VisualStudio** Solution
-  + on GNU/Linux: type **make**
+- To build fire up a terminal in the project root and type
+```
+make build
+```
+- To clean building files type
+```
+make clean
+```
+
+On **Windows** launch a terminal inside the project root
+  - Create a build directory and enter it
+  ```
+  mkdir build
+  cd build
+  ```
+  - Generate a VisualStudio Solution
+  ```
+  cmake ..\
+  ```
+  - Open the resulting Solution file (.sln)
 
 ## Usage
 
-TODO: Write usage instructions
+For both Windows and GNU/Linux users:
 
-- Launch build/src/server/**tlk_server** with:
- + *port_number*
+- To Launch a server instance
 
-- Launch build/src/client/**tlk_client** with:
- + *IP_address*
- + *port_number*
+  ```
+  ./build/src/server/tlk_server <port_number>
+  ```
 
-Where *port_number* must be equal and *IP_address* must be the IP address of the server we're connecting to
+- To connect as a client
 
-e.g. (local machine test):
-  - ./build/src/server/tlk_server 3000
-  - ./build/src/client/tlk_client 127.0.0.1 3000
+  ```
+  ./build/src/client/tlk_client <ip_address> <port_number> <nickname>
+  ```
 
-## Contributing
+Where
+  - **port_number** is a number between 1024 and 49151
+  - **ip_address** is the server address
+  - **nickname** is a word of 10 characters at most
 
-TODO: Write a contributions how-to
-
-## History
-
-TODO: Write history
-
-## Credits
-
-TODO: Write credits
-
-## License
-
-TODO: Write license
+Test it in your local machine using *127.0.0.1* as the ip address

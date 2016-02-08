@@ -1,8 +1,10 @@
 # Wanted (Dead or Alive)
 
-- [ ] Make bugs bounties table
-- [ ] Write proper docs and readme
+- [x] Write proper docs and readme
+  + [ ] Project description
+  + [ ] Test build docs
 - [ ] Fix talk command
 - [ ] Add error checking to libs
-- [ ] Refactor client and server code
+- [ ] Finish client and server code
 - [ ] Make buffer handling lib?
+- [ ] Write more utility functions
