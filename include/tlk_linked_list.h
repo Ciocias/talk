@@ -28,7 +28,7 @@ extern int linked_list_add(linked_list * ll, void *value);
  * Remove the element in the i-th position. Return LINKED_LIST_OK in case of success
  * and LINKED_LIST_NOK in case of failure
  */
-extern int linked_list_remove(linked_list *ll, int i);
+extern int linked_list_remove(linked_list *ll, void *n);
 
 /*
  * Fill the buffer with a string reporting the content of the list. Returns LINKED_LIST_OK

@@ -174,6 +174,7 @@ void * sender (void *arg)
   {
     /* Read from stdin */
     if (LOG) printf("\n\t*** [SND] Read from stdin\n\n");
+    if (shouldStop) break;
 
     /* TODO: implement a prompt function */
     printf("--> ");
@@ -245,6 +246,9 @@ void * receiver (void *arg)
      *  Select an available read descriptor
      *  since we don't use a timeout and block on select(),  there's no need to check if return is 0
      */
+
+    if (shouldStop) break;
+
     if (LOG) printf("\n\t*** [REC] Select available read descriptor\n\n");
     ret = select(nfds, &read_descriptors, NULL, NULL, NULL);
 
@@ -258,6 +262,8 @@ void * receiver (void *arg)
       shouldStop = -1;
       break;
     }
+
+    if (shouldStop) break;
 
     /* Read is now possible */
     ret = recv_msg(*socket, buf, MSG_SIZE);
@@ -284,6 +290,8 @@ void * receiver (void *arg)
 
     }
   }
+
+  printf("Press enter to exit client...");
 
   /* Terminate receiver thread */
   if (LOG) printf("\n\t*** [REC] Receiver thread termination\n\n");

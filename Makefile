@@ -1,7 +1,7 @@
 #########################################################
-#																												#
-#	 A starting point towards automated project building  #
-#																												#
+#							#
+#  A starting point towards automated project building  #
+#							#
 #########################################################
 
 .phony: build clean

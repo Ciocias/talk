@@ -47,6 +47,6 @@ void * user_receiver (void *arg);
 #endif
 
 /* Chat session handler */
-void user_chat_session (tlk_user_t *user);
+void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_node_t *t_node);
 
 #endif

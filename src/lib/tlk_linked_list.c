@@ -42,23 +42,29 @@ int linked_list_add(linked_list * ll, void *value) {
     ptr->size++;
 }
 
-int linked_list_remove(linked_list *ll, int index) {
+int linked_list_remove(linked_list *ll, void *n) {
     linked_list_struct *ptr = (linked_list_struct *) ll;
+
+    int index = linked_list_contains(ll, n);
     if (index < 0 || index >= ptr->size)
         return LINKED_LIST_NOK;
+
     int i;
     linked_list_node *current = ptr->head;
     linked_list_node *previous = NULL;
+
     for (i = 0; i < index && current != NULL; i++) {
         previous = current;
         current = current->next;
     }
+
     if (ptr->head == ptr->tail)
         ptr->tail = NULL;
     if (previous == NULL)
         ptr->head = current->next;
     else
         previous->next = current->next;
+
     free(current);
     ptr->size--;
     return LINKED_LIST_OK;
@@ -124,11 +130,18 @@ int linked_list_size(linked_list *ll) {
 
 int linked_list_contains(linked_list *ll, void *n) {
     linked_list_struct * lls = (linked_list_struct *) ll;
+
+    if (lls -> size == 0)
+      return LINKED_LIST_NOK;
+
     linked_list_node * current = lls->head;
+
+    int i = 0;
     while (current != NULL) {
         if (current->value == n)
-            return LINKED_LIST_OK;
+            return i;
         current = current->next;
+        i += 1;
     }
     return LINKED_LIST_NOK;
 }

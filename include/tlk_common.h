@@ -24,16 +24,20 @@
 #define LIST_COMMAND         "list"
 #define TALK_COMMAND         "talk"
 #define QUIT_COMMAND         "quit"
+#define CLOSE_COMMAND        "close"
 
 #define HELP_MSG             "%c%s             -> Show this help"
 #define LIST_MSG             "%c%s             -> List current users"
 #define TALK_MSG             "%c%s <nickname>  -> Start a talk with <nickname>"
-#define QUIT_MSG             "%c%s             -> Quit session"
+#define CLOSE_MSG            "%c%s            -> Close chat session"
+#define QUIT_MSG             "%c%s             -> Quit"
 
 /* TMP */
 #define JOIN_FAILED          "Join Error"
 #define JOIN_SUCCESS         "Join Success"
 #define REGISTER_FAILED      "Register Error"
 #define USER_NOT_FOUND       "Unable to find user %s"
+#define BEGIN_CHAT_MSG       "You're now talking with %s!"
+#define NO_NICKNAME          "Error: no nickname specified"
 
 #endif

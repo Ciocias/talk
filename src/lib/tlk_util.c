@@ -190,11 +190,20 @@ void send_help (tlk_socket_t socket) {
 
   snprintf(
     msg,
+    strlen(CLOSE_MSG) + sizeof(COMMAND_CHAR) + strlen(CLOSE_COMMAND) + 1,
+    CLOSE_MSG,
+    COMMAND_CHAR, CLOSE_COMMAND
+  );
+  send_msg(socket, msg);
+
+  snprintf(
+    msg,
     strlen(QUIT_MSG) + sizeof(COMMAND_CHAR) + strlen(QUIT_COMMAND) + 1,
     QUIT_MSG,
     COMMAND_CHAR, QUIT_COMMAND
   );
   send_msg(socket, msg);
+
 }
 
 /*
@@ -204,23 +213,14 @@ void send_help (tlk_socket_t socket) {
 void send_users_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
 
   int i;
-  char msg[MSG_SIZE];
-
-  send_msg(socket, "Users list\n");
 
   /* Send users list, nickname per nickname */
   tlk_user_t *aux;
-  for (i = 0; i < MAX_USERS; i++)
-  {
+  send_msg(socket, "Users list\n");
+  for (i = 0; i < MAX_USERS; i++) {
     aux = list[i];
-    if (aux != NULL)
-    {
-      snprintf(
-        msg,
-        strlen(aux -> nickname) + 1,
-        "%s",
-        aux -> nickname);
-      send_msg(socket, msg);
+    if (aux != NULL) {
+      send_msg(socket, aux -> nickname);
     }
   }
 

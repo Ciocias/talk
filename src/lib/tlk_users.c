@@ -52,7 +52,7 @@ int tlk_user_register (tlk_user_t *user) {
  * Delete user associated with @socket from extern users_list and deallocates memory, thread-safe
  * Returns 0 on success, propagates errors on fail
  */
-int tlk_user_delete (tlk_socket_t socket) {
+int tlk_user_delete (tlk_user_t *user) {
 
   int ret;
 
@@ -61,14 +61,17 @@ int tlk_user_delete (tlk_socket_t socket) {
 
   int i;
   for (i = 0; i < current_users; i++) {
-    if (users_list[i] -> socket == socket) {
+    if (users_list[i] -> id == user -> id) {
       /* TODO: notify all users */
 
-      ret = tlk_socket_close(socket);
+      ret = tlk_socket_close(user -> socket);
       ERROR_HELPER(ret, "Cannot close user socket");
 
+      free(users_list[i] -> nickname);
       free(users_list[i] -> address);
       free(users_list[i]);
+
+      users_list[i] = NULL;
 
       for (; i < current_users - 1; i++) {
         users_list[i] = users_list[i + 1]; /* Shift all elements by 1 */
@@ -96,8 +99,8 @@ int tlk_user_delete (tlk_socket_t socket) {
  */
 tlk_user_t *tlk_user_find(char *nickname) {
 
-  int ret, not_found = 0;
-  tlk_user_t *result;
+  int ret;
+  tlk_user_t *result = NULL;
 
   ret = tlk_sem_wait(&users_mutex);
   ERROR_HELPER(ret, "Cannot wait on users_mutex semaphore");
@@ -111,15 +114,9 @@ tlk_user_t *tlk_user_find(char *nickname) {
     }
   }
 
-  if (result == NULL || result != users_list[i]) {
-    not_found = 1;
-  }
-
   ret = tlk_sem_post(&users_mutex);
   ERROR_HELPER(ret, "Cannot post on users_mutex semaphore");
 
-  if (not_found)
-    return NULL;
   return result;
 
 }

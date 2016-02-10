@@ -18,6 +18,7 @@ typedef enum {
 typedef struct _tlk_user_s {
   int id;
   user_status status;
+  struct _tlk_user_s *listener;
   tlk_socket_t socket;
   struct sockaddr_in *address;
   char *nickname;
@@ -40,7 +41,7 @@ int tlk_user_register (tlk_user_t *user);
  * Delete user associated with @socket from extern users_list and deallocates memory, thread-safe
  * Returns 0 on success, propagates errors on fail
  */
-int tlk_user_delete (tlk_socket_t socket);
+int tlk_user_delete (tlk_user_t *user);
 
 /*
  *
