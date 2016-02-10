@@ -7,8 +7,11 @@ tlk_sem_t users_mutex;
 unsigned int current_users;
 tlk_user_t *users_list[MAX_USERS];
 
-tlk_queue_t *waiting_queue          = NULL; /* Input queue for broker thread */
-linked_list *threads_queues         = NULL; /* Linked list of threads queues */
+/* Input queue for broker thread */
+tlk_queue_t *waiting_queue          = NULL;
+
+/* Linked list of threads queues */
+linked_list *threads_queues         = NULL;
 
 typedef struct _queue_thread_arg_s {
   thread_node_t *node;
@@ -307,7 +310,7 @@ void * user_handler (void *arg)
   args -> node = t_node;
   args -> socket = user -> socket;
 
-  ret = tlk_thread_create(&queue_checker, (tlk_thread_func) queue_checker_routine, (tlk_thread_args) args);
+  ret = tlk_thread_create(&queue_checker, (tlk_thread_func) user_receiver, (tlk_thread_args) args);
   PTHREAD_ERROR_HELPER(ret, "Cannot create thread");
 
   ret = tlk_thread_detach(queue_checker);
@@ -324,10 +327,10 @@ void * user_handler (void *arg)
 /* User queue-checking thread */
 #if defined(_WIN32) && _WIN32
 
-DWORD WINAPI queue_checker_routine (LPVOID arg)
+DWORD WINAPI user_receiver (LPVOID arg)
 #elif defined(__linux__) && __linux__
 
-void * queue_checker_routine (void *arg)
+void * user_receiver (void *arg)
 #endif
 {
   int ret;
@@ -343,6 +346,8 @@ void * queue_checker_routine (void *arg)
       if (LOG) printf("\n\t*** [QCR] Dequeuing error, exiting...\n\n");
       tlk_thread_exit(NULL);
     }
+
+    /* TODO: quit command handling */
 
     if (tlk_msg != NULL) {
       ret = send_msg(args -> socket, tlk_msg -> content);
@@ -431,7 +436,7 @@ void user_chat_session (tlk_user_t *user) {
               listener -> status = TALKING;
               if (LOG) printf("\n\nuser is %s\n", (user -> status == IDLE ? "IDLE":"TALKING"));
               if (LOG) printf("listener is %s\n\n", (listener -> status == IDLE ? "IDLE":"TALKING"));
-            }
+            } else continue;
           }
         } else if (strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0) {
 
