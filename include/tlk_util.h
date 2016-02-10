@@ -69,4 +69,10 @@ void send_users_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]);
  */
 void parse_talkmsg_target(char msg[MSG_SIZE]);
 
+/*
+ *
+ *
+ */
+tlk_message_t *talk_session (tlk_user_t *user, char msg[MSG_SIZE]);
+
 #endif

@@ -36,7 +36,7 @@
 #define JOIN_FAILED          "Join Error"
 #define JOIN_SUCCESS         "Join Success"
 #define REGISTER_FAILED      "Register Error"
-#define USER_NOT_FOUND       "Unable to find user %s"
+#define USER_NOT_FOUND       "Unable to find user"
 #define BEGIN_CHAT_MSG       "You're now talking with %s!"
 #define NO_NICKNAME          "Error: no nickname specified"
 

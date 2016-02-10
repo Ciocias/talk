@@ -226,13 +226,54 @@ void send_users_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
 
 }
 
+tlk_message_t *talk_session (tlk_user_t *user, char msg[MSG_SIZE]) {
+
+  char error_msg[MSG_SIZE];
 /*
- *
- *
- */
-char talk_msg_prefix[MSG_SIZE];
-size_t talk_msg_prefix_len = 0;
+  size_t msg_len = strlen(msg);
+  size_t talk_command_len = strlen(TALK_COMMAND) + 1;
 
-void parse_talkmsg_target(char msg[MSG_SIZE]) {
+  if (msg_len <= talk_command_len + 1) {
 
+    if (LOG) printf("\n\t*** [USR] Error no nickname specified\n\n");
+    snprintf(error_msg, strlen(NO_NICKNAME), NO_NICKNAME);
+
+    send_msg(user -> socket, error_msg);
+    return NULL;
+  }
+
+  (user -> listener) = tlk_user_find(msg + talk_command_len + 1);*/
+  if ((user -> listener) == NULL) {
+
+    return NULL;
+
+  } else {
+
+    if ((user -> listener) -> status == IDLE) {
+
+      /* Start talking with listener */
+      user -> status = TALKING;
+      (user -> listener) -> status = TALKING;
+      (user -> listener) -> listener = user;
+
+      /* Send an information message */
+      snprintf(error_msg, strlen(BEGIN_CHAT_MSG) + strlen(user -> nickname), BEGIN_CHAT_MSG, user -> nickname);
+
+      tlk_message_t *tlk_msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
+
+      tlk_msg -> id         = (user -> listener) -> id;
+      tlk_msg -> sender     = user;
+      tlk_msg -> receiver   = (user -> listener);
+
+      tlk_msg -> content    = (char *) calloc(MSG_SIZE, sizeof(char));
+
+      sprintf(tlk_msg -> content, error_msg);
+      return tlk_msg;
+
+    } else {
+      return NULL;
+    }
+  }
+
+  return NULL;
 }

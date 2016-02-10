@@ -289,7 +289,7 @@ void * user_handler (void *arg)
   if (ret == TLK_SOCKET_ERROR) {
     if (LOG) printf("\n\t*** [USR] Cannot notify the client: delete new user and exit...\n\n");
 
-    tlk_user_delete(user -> socket);
+    tlk_user_delete(user);
     tlk_thread_exit(NULL);
   }
 
@@ -403,33 +403,28 @@ void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_no
 
           /* TODO: refactor code into subroutine */
 
-          /* Try to start a talking session with the given nickname */
-          int ret;
-          size_t talk_command_len = strlen(TALK_COMMAND) + 1;
-          char *nickname = (char *) malloc(NICKNAME_SIZE * sizeof(char));
           size_t msg_len = strlen(msg);
+          size_t talk_command_len = strlen(TALK_COMMAND) + 1;
 
           if (msg_len <= talk_command_len + 1) {
 
             if (LOG) printf("\n\t*** [USR] Error no nickname specified\n\n");
-
             snprintf(error_msg, strlen(NO_NICKNAME), NO_NICKNAME);
 
-            ret = send_msg(user -> socket, error_msg);
-            if (ret == TLK_SOCKET_ERROR) {
-              if (LOG) printf("\n\t*** [USR] Cannot send error_msg to user %s\n\n", user -> nickname);
-              tlk_thread_exit(NULL);
-            }
-
+            send_msg(user -> socket, error_msg);
             continue;
           }
 
+          /* Try to find user with given nickname */
           (user -> listener) = tlk_user_find(msg + talk_command_len + 1);
-          if ((user -> listener) == NULL) {
 
-            if (LOG) printf("\n\t*** [USR] Unable to find user %s\n\n", nickname);
+          /* Try to start a talking session with the given nickname */
+          tlk_msg = talk_session(user, msg);
 
-            snprintf(error_msg, strlen(USER_NOT_FOUND) + strlen(nickname) + 2, USER_NOT_FOUND, nickname);
+          if (tlk_msg == NULL) {
+            if (LOG) printf("\n\t*** [USR] Unable to start new talk session \n\n");
+
+            snprintf(error_msg, strlen(USER_NOT_FOUND), USER_NOT_FOUND);
 
             ret = send_msg(user -> socket, error_msg);
             if (ret == TLK_SOCKET_ERROR) {
@@ -437,45 +432,19 @@ void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_no
               tlk_thread_exit(NULL);
             }
 
-            continue;
           } else {
-            printf("\nlistener now is %s\n", (user -> listener) -> nickname);
-
-            if ((user -> listener) -> status == IDLE) {
-
-
-              /* Start talking with listener */
-              user -> status = TALKING;
-              (user -> listener) -> status = TALKING;
-              (user -> listener) -> listener = user;
-
-              snprintf(error_msg, strlen(BEGIN_CHAT_MSG) + strlen(user -> nickname), BEGIN_CHAT_MSG, user -> nickname);
-
-              tlk_msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
-
-              tlk_msg -> id         = (user -> listener) -> id;
-              tlk_msg -> sender     = user;
-              tlk_msg -> receiver   = (user -> listener);
-
-              tlk_msg -> content    = (char *) calloc(MSG_SIZE, sizeof(char));
-
-              sprintf(tlk_msg -> content, error_msg);
-              ret = tlk_queue_enqueue(waiting_queue, tlk_msg);
-              if (ret) {
-                if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
-                tlk_thread_exit(NULL);
-              }
-
-              printf("\n%s now is %s\n", (user -> listener) -> nickname, ((user -> listener) -> status == IDLE ? "IDLE":"TALKING"));
-
-              if (LOG) printf("\n\nuser is %s\n", (user -> status == IDLE ? "IDLE":"TALKING"));
-              if (LOG) printf("listener is %s\n\n", ((user -> listener) -> status == IDLE ? "IDLE":"TALKING"));
-            } else continue;
+            ret = tlk_queue_enqueue(waiting_queue, tlk_msg);
+            if (ret) {
+              if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
+              tlk_thread_exit(NULL);
+            }
           }
 
         } else if (strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0) {
 
           if (LOG) printf("\n\t*** [USR] User asked to quit\n\n");
+          if (user -> status == TALKING) continue;
+
           quit = 1;
 
           snprintf(error_msg, strlen("/quit") + 1, "/quit");
