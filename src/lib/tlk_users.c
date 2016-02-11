@@ -93,10 +93,7 @@ int tlk_user_delete (tlk_user_t *user) {
   return ret;
 }
 
-/*
- *
- *
- */
+/* TODO: tlk_user_find description */
 tlk_user_t *tlk_user_find(char *nickname) {
 
   int ret;

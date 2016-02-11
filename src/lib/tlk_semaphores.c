@@ -13,7 +13,7 @@ int tlk_sem_init(tlk_sem_t *sem, unsigned int value, unsigned int max_value) {
 	*sem = CreateSemaphore(NULL, value, max_value, NULL);
 
   ret = (*sem != NULL? 0 : -1);
-	
+
 #elif defined(__linux__) && __linux__
 
   ret = sem_init(sem, 0, value);
@@ -27,7 +27,7 @@ int tlk_sem_init(tlk_sem_t *sem, unsigned int value, unsigned int max_value) {
  * Close and destroy @sem
  * Returns 0 on success, -1 on failure
  */
-int tlk_sem_destroy(tlk_sem_t sem) {
+int tlk_sem_destroy(tlk_sem_t *sem) {
 
   int ret = 0;
 
@@ -50,12 +50,12 @@ int tlk_sem_destroy(tlk_sem_t sem) {
  */
 int tlk_sem_wait(tlk_sem_t *sem) {
 
-  DWORD ret = 0;
+  int ret = 0;
 
 #if defined(_WIN32) && _WIN32
-	
+
 	ret = WaitForSingleObject(*sem, INFINITE)/* != WAIT_FAILED ? 0 : -1)*/;
-	
+
 	switch (ret) {
 		case WAIT_OBJECT_0:
 			break;

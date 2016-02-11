@@ -6,13 +6,15 @@
 #include <string.h>
 
 #include "tlk_sockets.h"
+#include "tlk_msg_queue.h"
 #include "tlk_users.h"
 #include "tlk_errors.h"
 
 #if defined(_WIN32) && _WIN32
-#define _WINSOCKAPI_
 
+#define _WINSOCKAPI_
 #include <Winsock2.h>
+
 #elif defined(__linux__) && __linux__
 #include <netinet/in.h>
 #endif
@@ -63,20 +65,21 @@ void send_help (tlk_socket_t socket);
  * Send users @list through @socket as a list of nicknames
  * Returns nothing
  */
-void send_users_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]);
+void send_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]);
 
-/*
- *
- *
- */
+/* TODO: send_unknown description */
+int send_unknown (tlk_socket_t socket);
+
+/* TODO: parse_talkmsg_target description */
 void parse_talkmsg_target(char msg[MSG_SIZE]);
 
-/*
- *
- *
- */
-tlk_message_t *talk_session (tlk_user_t *user, char msg[MSG_SIZE]);
+/* TODO: send_die description */
+int send_die (tlk_user_t *user, tlk_queue_t *queue);
 
-int tlk_inet_pton(int af, const char *src, void *dst);
+/* TODO: talk_session description */
+int talk_session (tlk_user_t *user, char msg[MSG_SIZE], tlk_queue_t *queue);
+
+/* TODO: pack_and_send_msg description */
+int pack_and_send_msg (int id, tlk_user_t *sender, tlk_user_t *receiver, char *msg, tlk_queue_t *queue);
 
 #endif

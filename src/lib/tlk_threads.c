@@ -36,7 +36,7 @@ int tlk_thread_detach(tlk_thread_t *thread) {
 
 #elif defined(__linux__) && __linux__
 
-  ret = pthread_detach(thread);
+  ret = pthread_detach(*thread);
 
 #endif
 
@@ -64,7 +64,7 @@ int tlk_thread_join(tlk_thread_t *thread, void *exit_code) {
 
 #elif defined(__linux__) && __linux__
 
-  ret = pthread_join(thread, &exit_code);
+  ret = pthread_join(*thread, &exit_code);
 
 #endif
 

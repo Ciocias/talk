@@ -2,7 +2,7 @@
 #define TLK_COMMON_H
 
 #define DEBUG                1
-#define LOG                  1
+#define LOG                  0
 
 #define DEFAULT_IP           "127.0.0.1"
 #define DEFAULT_PORT         3000
@@ -39,5 +39,8 @@
 #define USER_NOT_FOUND       "Unable to find user"
 #define BEGIN_CHAT_MSG       "You're now talking with %s!"
 #define NO_NICKNAME          "Error: no nickname specified"
+#define CLOSE_TALK_MSG       "No more talking"
+#define DIE_MSG              "die"
+#define UNKNOWN_CMD_MSG      "Unknown command, type %c%s for a list of available commands"
 
 #endif

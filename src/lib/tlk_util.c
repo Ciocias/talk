@@ -210,12 +210,12 @@ void send_help (tlk_socket_t socket) {
  * Send users @list through @socket as a list of nicknames
  * Returns nothing
  */
-void send_users_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
+void send_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
 
   int i;
+  tlk_user_t *aux;
 
   /* Send users list, nickname per nickname */
-  tlk_user_t *aux;
   send_msg(socket, "Users list\n");
   for (i = 0; i < MAX_USERS; i++) {
     aux = list[i];
@@ -226,26 +226,37 @@ void send_users_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
 
 }
 
-tlk_message_t *talk_session (tlk_user_t *user, char msg[MSG_SIZE]) {
+/* TODO: send_unknown description */
+int send_unknown (tlk_socket_t socket) {
+
+  char msg[MSG_SIZE];
+  sprintf(msg, UNKNOWN_CMD_MSG, COMMAND_CHAR, HELP_CMD);
+
+  return send_msg(socket, msg);
+}
+
+/* TODO: send_die description */
+int send_die (tlk_user_t *user, tlk_queue_t *queue) {
 
   char error_msg[MSG_SIZE];
-/*
-  size_t msg_len = strlen(msg);
-  size_t talk_command_len = strlen(TALK_COMMAND) + 1;
+  snprintf(error_msg, strlen(DIE_MSG) + 1, DIE_MSG);
 
-  if (msg_len <= talk_command_len + 1) {
+  return pack_and_send_msg(
+    user -> id,
+    user,
+    user,
+    error_msg,
+    queue
+  );
+}
 
-    if (LOG) printf("\n\t*** [USR] Error no nickname specified\n\n");
-    snprintf(error_msg, strlen(NO_NICKNAME), NO_NICKNAME);
+/* TODO: talk_session description */
+int talk_session (tlk_user_t *user, char msg[MSG_SIZE], tlk_queue_t *queue) {
 
-    send_msg(user -> socket, error_msg);
-    return NULL;
-  }
-
-  (user -> listener) = tlk_user_find(msg + talk_command_len + 1);*/
+  char error_msg[MSG_SIZE];
   if ((user -> listener) == NULL) {
 
-    return NULL;
+    return 1;
 
   } else {
 
@@ -259,46 +270,35 @@ tlk_message_t *talk_session (tlk_user_t *user, char msg[MSG_SIZE]) {
       /* Send an information message */
       snprintf(error_msg, strlen(BEGIN_CHAT_MSG) + strlen(user -> nickname), BEGIN_CHAT_MSG, user -> nickname);
 
-      tlk_message_t *tlk_msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
-
-      tlk_msg -> id         = (user -> listener) -> id;
-      tlk_msg -> sender     = user;
-      tlk_msg -> receiver   = (user -> listener);
-
-      tlk_msg -> content    = (char *) calloc(MSG_SIZE, sizeof(char));
-
-      sprintf(tlk_msg -> content, error_msg);
-      return tlk_msg;
+      return pack_and_send_msg(
+        (user -> listener) -> id,
+        user,
+        user -> listener,
+        error_msg,
+        queue
+      );
 
     } else {
-      return NULL;
+      return 1;
     }
   }
 
-  return NULL;
+  return -1;
 }
 
-
-int tlk_inet_pton(int af, const char *src, void *dst)
+/* TODO: pack_and_send_msg description */
+int pack_and_send_msg (int id, tlk_user_t *sender, tlk_user_t *receiver, char *msg, tlk_queue_t *queue)
 {
-  struct sockaddr_storage ss;
-  int size = sizeof(ss);
-  char src_copy[INET6_ADDRSTRLEN+1];
 
-  ZeroMemory(&ss, sizeof(ss));
-  /* stupid non-const API */
-  strncpy (src_copy, src, INET6_ADDRSTRLEN+1);
-  src_copy[INET6_ADDRSTRLEN] = 0;
+  tlk_message_t *tlk_msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
 
-  if (WSAStringToAddress(src_copy, af, NULL, (struct sockaddr *)&ss, &size) == 0) {
-    switch(af) {
-      case AF_INET:
-    *(struct in_addr *)dst = ((struct sockaddr_in *)&ss)->sin_addr;
-    return 1;
-      case AF_INET6:
-    *(struct in6_addr *)dst = ((struct sockaddr_in6 *)&ss)->sin6_addr;
-    return 1;
-    }
-  }
-  return 0;
+  tlk_msg -> id         = id;
+  tlk_msg -> sender     = sender;
+  tlk_msg -> receiver   = receiver;
+
+  tlk_msg -> content    = (char *) calloc(MSG_SIZE, sizeof(char));
+
+  sprintf(tlk_msg -> content, msg);
+
+  return tlk_queue_enqueue(queue, tlk_msg);
 }

@@ -8,15 +8,14 @@ tlk_queue_t *tlk_queue_new (int size) {
 	int ret;
 	tlk_queue_t *aux = (tlk_queue_t *) malloc(sizeof(tlk_queue_t));
 
-
   ret = tlk_sem_init(&(aux -> empty_count), size, size);
 
 	ret = tlk_sem_init(&(aux -> fill_count), 0, size);
-	
+
 	ret = tlk_sem_init(&(aux -> read_mutex), 1, 1);
-	
+
 	ret = tlk_sem_init(&(aux -> write_mutex), 1, 1);
-	
+
   aux -> buffer = (tlk_message_t *) malloc(size * sizeof(tlk_message_t ));
   aux -> buffer_length = size;
   aux -> read_index = 0;
@@ -54,16 +53,16 @@ int tlk_queue_dequeue (tlk_queue_t *q, tlk_message_t *msg) {
   int ret;
 
   ret = tlk_sem_wait(&(q -> fill_count));
-  
+
 	ret = tlk_sem_wait(&(q -> read_mutex));
-	
+
 	*msg = (q -> buffer)[q -> read_index];
   q -> read_index = ((q -> read_index) + 1) % (q -> buffer_length);
 
   ret = tlk_sem_post(&(q -> read_mutex));
-	
+
 	ret = tlk_sem_post(&(q -> empty_count));
-	
+
 	return ret;
 }
 

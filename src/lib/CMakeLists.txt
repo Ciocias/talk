@@ -11,7 +11,9 @@ add_library (tlk_semaphores ${lib_semaphores_sources})
 
 set (lib_sockets_sources tlk_sockets.c "${headers}/tlk_sockets.h")
 add_library (tlk_sockets ${lib_sockets_sources})
+if (WIN32 AND CMAKE_SYSTEM_VERSION)
 target_link_libraries (tlk_sockets wsock32 ws2_32 )
+endif ()
 
 find_package (Threads)
 set (lib_threads_sources tlk_threads.c "${headers}/tlk_threads.h")

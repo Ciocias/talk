@@ -28,7 +28,7 @@ int tlk_sem_init(tlk_sem_t *sem, unsigned int value, unsigned int max_value);
  * Close and destroy @sem
  * Returns 0 on success, propagates errors on fail
  */
-int tlk_sem_destroy(tlk_sem_t sem);
+int tlk_sem_destroy(tlk_sem_t *sem);
 
 /*
  * Perform a wait operation on @sem
