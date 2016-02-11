@@ -46,7 +46,7 @@ void close_and_free_chat_session (tlk_user_t *user) {
 
   free(user -> address);
   free(user);
-  tlk_thread_exit(NULL);
+  tlk_thread_exit((tlk_exit_t) NULL);
 }
 
 /*
@@ -166,9 +166,9 @@ void send_help (tlk_socket_t socket) {
   /* Send commands list */
   snprintf(
     msg,
-    strlen(HELP_MSG) + sizeof(COMMAND_CHAR) + strlen(HELP_COMMAND) + 1,
+    strlen(HELP_MSG) + sizeof(COMMAND_CHAR) + strlen(HELP_CMD) + 1,
     HELP_MSG,
-    COMMAND_CHAR, HELP_COMMAND
+    COMMAND_CHAR, HELP_CMD
   );
   send_msg(socket, msg);
 
@@ -276,4 +276,29 @@ tlk_message_t *talk_session (tlk_user_t *user, char msg[MSG_SIZE]) {
   }
 
   return NULL;
+}
+
+
+int tlk_inet_pton(int af, const char *src, void *dst)
+{
+  struct sockaddr_storage ss;
+  int size = sizeof(ss);
+  char src_copy[INET6_ADDRSTRLEN+1];
+
+  ZeroMemory(&ss, sizeof(ss));
+  /* stupid non-const API */
+  strncpy (src_copy, src, INET6_ADDRSTRLEN+1);
+  src_copy[INET6_ADDRSTRLEN] = 0;
+
+  if (WSAStringToAddress(src_copy, af, NULL, (struct sockaddr *)&ss, &size) == 0) {
+    switch(af) {
+      case AF_INET:
+    *(struct in_addr *)dst = ((struct sockaddr_in *)&ss)->sin_addr;
+    return 1;
+      case AF_INET6:
+    *(struct in6_addr *)dst = ((struct sockaddr_in6 *)&ss)->sin6_addr;
+    return 1;
+    }
+  }
+  return 0;
 }

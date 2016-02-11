@@ -12,6 +12,7 @@ typedef HANDLE tlk_thread_t;
 /* tmp */
 typedef LPTHREAD_START_ROUTINE tlk_thread_func;
 typedef LPVOID tlk_thread_args;
+typedef DWORD tlk_exit_t;
 
 #elif defined(__linux__) && __linux__
 
@@ -20,6 +21,7 @@ typedef LPVOID tlk_thread_args;
 typedef pthread_t tlk_thread_t;
 typedef void *(*tlk_thread_func)(void*);
 typedef void *tlk_thread_args;
+typedef void *tlk_exit_t;
 
 #else
 #error OS not supported
@@ -59,6 +61,6 @@ int tlk_thread_join(tlk_thread_t thread, void *exit_code);
  * Terminates the current thread with @exit_code
  * Returns nothing
  */
-void tlk_thread_exit(void *exit_code);
+void tlk_thread_exit(tlk_exit_t exit_code);
 
 #endif

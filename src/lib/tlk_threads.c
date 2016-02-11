@@ -74,13 +74,12 @@ int tlk_thread_join(tlk_thread_t thread, void *exit_code) {
  * Terminates the current thread with @exit_code
  * Returns nothing
  */
+void tlk_thread_exit(tlk_exit_t exit_code) {
 #if defined(_WIN32) && _WIN32
-void tlk_thread_exit(DWORD exit_code) {
 
   ExitThread(exit_code);
 
 #elif defined(__linux__) && __linux__
-void tlk_thread_exit(void *exit_code) {
 
   pthread_exit(exit_code);
 

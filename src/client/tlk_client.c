@@ -16,12 +16,12 @@ tlk_socket_t initialize_client (const char *argv[]) {
 
   /* Parse IP address */
   if (LOG) printf("--> Parse IP address\n");
-  ret = inet_pton(AF_INET, argv[1], (void *) &ip_addr);
+  ret = tlk_inet_pton(AF_INET, argv[1], (void *) &ip_addr);
 
   if (ret <= 0) {
     if (ret == 0) {
       fprintf(stderr, "Address not valid\n");
-    } else if (ret == -1 && errno == EAFNOSUPPORT) {
+    } else if (ret == -1 && errno == TLK_EAFNOSUPPORT) {
       fprintf(stderr, "Address family not valid\n");
     }
 
@@ -207,10 +207,10 @@ void * sender (void *arg)
 
   /* Terminate sender thread */
   if (LOG) printf("\n\t*** [SND] Sender thread termination\n\n");
-  tlk_thread_exit(NULL);
+  tlk_thread_exit((tlk_exit_t) NULL);
 
   /* Avoid compiler warnings */
-  return NULL;
+  return (tlk_exit_t) NULL;
 }
 
 /* Receiver thread */
@@ -295,10 +295,10 @@ void * receiver (void *arg)
 
   /* Terminate receiver thread */
   if (LOG) printf("\n\t*** [REC] Receiver thread termination\n\n");
-  tlk_thread_exit(NULL);
+  tlk_thread_exit((tlk_exit_t) NULL);
 
   /* Avoid compiler warnings */
-  return NULL;
+  return (tlk_exit_t) NULL;
 }
 
 int main (int argc, const char *argv[]) {

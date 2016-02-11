@@ -20,6 +20,7 @@
 #include <iphlpapi.h>
 
 #define TLK_EINTR WSAEINTR
+#define TLK_EAFNOSUPPORT WSAEAFNOSUPPORT
 #define TLK_SOCKET_ERROR SOCKET_ERROR
 
 typedef unsigned int tlk_socket_t;
@@ -36,6 +37,7 @@ typedef unsigned int tlk_socket_t;
 #include <netinet/in.h>
 
 #define TLK_EINTR EINTR
+#define TLK_EAFNOSUPPORT EAFNOSUPPORT
 #define TLK_SOCKET_ERROR -1
 
 typedef int tlk_socket_t;

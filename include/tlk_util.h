@@ -75,4 +75,6 @@ void parse_talkmsg_target(char msg[MSG_SIZE]);
  */
 tlk_message_t *talk_session (tlk_user_t *user, char msg[MSG_SIZE]);
 
+int tlk_inet_pton(int af, const char *src, void *dst);
+
 #endif

@@ -256,7 +256,7 @@ void * user_handler (void *arg)
   int join_msg_len = recv_msg(user -> socket, msg, MSG_SIZE);
 
   if (join_msg_len < 0) {
-    tlk_thread_exit(NULL);
+    tlk_thread_exit((tlk_exit_t) NULL);
   } else if (parse_join_msg(msg, strlen(msg), user -> nickname) != 0) {
 
     snprintf(msg, strlen(JOIN_FAILED) + 1, "%s", JOIN_FAILED);
@@ -264,7 +264,7 @@ void * user_handler (void *arg)
     if (LOG) printf("\n\t*** [USR] Failed to join new user as %s\n\n", user -> nickname);
     send_msg(user -> socket, msg);
 
-    tlk_thread_exit(NULL);
+    tlk_thread_exit((tlk_exit_t) NULL);
   }
 
   /* Register new user with given nickname */
@@ -277,7 +277,7 @@ void * user_handler (void *arg)
     if (LOG) printf("\n\t*** [USR] Failed to register new user as %s\n\n", user -> nickname);
     send_msg(user -> socket, msg);
 
-    tlk_thread_exit(NULL);
+    tlk_thread_exit((tlk_exit_t) NULL);
   }
 
   /* If everything runs fine notify the client */
@@ -290,7 +290,7 @@ void * user_handler (void *arg)
     if (LOG) printf("\n\t*** [USR] Cannot notify the client: delete new user and exit...\n\n");
 
     tlk_user_delete(user);
-    tlk_thread_exit(NULL);
+    tlk_thread_exit((tlk_exit_t) NULL);
   }
 
   /* Send welcome & help (includes commands list) */
@@ -341,7 +341,7 @@ void * user_receiver (void *arg)
     ret = tlk_queue_dequeue((args -> node) -> queue, tlk_msg);
     if (ret) {
       if (LOG) printf("\n\t*** [QCR] Dequeuing error, exiting...\n\n");
-      tlk_thread_exit(NULL);
+      tlk_thread_exit((tlk_exit_t) NULL);
     }
 
     printf("msg -> %s\n", tlk_msg -> content);
@@ -351,14 +351,14 @@ void * user_receiver (void *arg)
       printf("msg -> %s\n", tlk_msg -> content);
 
       if (strncmp(tlk_msg -> content, "/quit", strlen("/quit") + 1) == 0) {
-        tlk_thread_exit(NULL);
+        tlk_thread_exit((tlk_exit_t) NULL);
       }
 
       /* Not a command: send it to our user */
       ret = send_msg(args -> socket, tlk_msg -> content);
       if (ret == TLK_SOCKET_ERROR) {
         if (LOG) printf("\n\t*** [QCR] Cannot send message to user: exiting...\n\n");
-        tlk_thread_exit(NULL);
+        tlk_thread_exit((tlk_exit_t) NULL);
       }
     }
   }
@@ -387,7 +387,7 @@ void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_no
       if (msg[0] == COMMAND_CHAR) {
         if (LOG) printf("\n\t*** [USR] Handle server commands recognition and execution\n\n");
 
-        if (strncmp(msg + 1, HELP_COMMAND, strlen(HELP_COMMAND)) == 0) {
+        if (strncmp(msg + 1, HELP_CMD, strlen(HELP_CMD)) == 0) {
 
           if (LOG) printf("\n\t*** [USR] User asked for help\n\n");
           send_help(user -> socket);
@@ -429,14 +429,14 @@ void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_no
             ret = send_msg(user -> socket, error_msg);
             if (ret == TLK_SOCKET_ERROR) {
               if (LOG) printf("\n\t*** [USR] Cannot send error_msg to user %s\n\n", user -> nickname);
-              tlk_thread_exit(NULL);
+              tlk_thread_exit((tlk_exit_t) NULL);
             }
 
           } else {
             ret = tlk_queue_enqueue(waiting_queue, tlk_msg);
             if (ret) {
               if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
-              tlk_thread_exit(NULL);
+              tlk_thread_exit((tlk_exit_t) NULL);
             }
           }
 
@@ -461,7 +461,7 @@ void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_no
           ret = tlk_queue_enqueue(waiting_queue, tlk_msg);
           if (ret) {
             if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
-            tlk_thread_exit(NULL);
+            tlk_thread_exit((tlk_exit_t) NULL);
           }
 
         } else if(strncmp(msg + 1, CLOSE_COMMAND, strlen(CLOSE_COMMAND)) == 0) {
@@ -488,7 +488,7 @@ void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_no
             ret = tlk_queue_enqueue(waiting_queue, tlk_msg);
             if (ret) {
               if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
-              tlk_thread_exit(NULL);
+              tlk_thread_exit((tlk_exit_t) NULL);
             }
 
             /* Unset both listeners */
@@ -504,12 +504,12 @@ void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_no
         } else {
 
           if (LOG) printf("\n\t*** [USR] User didn't ask\n\n");
-          sprintf(error_msg, "Unknown command, type %c%s for a list of available commands", COMMAND_CHAR, HELP_COMMAND);
+          sprintf(error_msg, "Unknown command, type %c%s for a list of available commands", COMMAND_CHAR, HELP_CMD);
 
           ret = send_msg(user -> socket, error_msg);
           if (ret == TLK_SOCKET_ERROR) {
             if (LOG) printf("\n\t*** [USR] Cannot send error_msg to user %s\n\n", user -> nickname);
-            tlk_thread_exit(NULL);
+            tlk_thread_exit((tlk_exit_t) NULL);
           }
 
         }
@@ -537,7 +537,7 @@ void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_no
             ret = tlk_queue_enqueue(waiting_queue, tlk_msg);
             if (ret) {
               if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
-              tlk_thread_exit(NULL);
+              tlk_thread_exit((tlk_exit_t) NULL);
             }
           } else {
             user -> status = IDLE;
@@ -586,7 +586,7 @@ void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_no
   linked_list_remove(threads_queues, (void *) t_node);
 
   ret = tlk_user_delete(user);
-  tlk_thread_exit(NULL);
+  tlk_thread_exit((tlk_exit_t) NULL);
 }
 
 int main (int argc, const char *argv[]) {
