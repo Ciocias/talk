@@ -26,13 +26,13 @@ int tlk_thread_create(tlk_thread_t *thread, tlk_thread_func thread_routine, tlk_
  * Detaches @thread from the current process
  * Returns 0 on success, propagates errors on fail
  */
-int tlk_thread_detach(tlk_thread_t thread) {
+int tlk_thread_detach(tlk_thread_t *thread) {
 
   int ret;
 
 #if defined(_WIN32) && _WIN32
 
-  ret = (CloseHandle(thread) != FALSE ? 0:1);
+  ret = (CloseHandle(*thread) != FALSE ? 0:1);
 
 #elif defined(__linux__) && __linux__
 
@@ -47,18 +47,19 @@ int tlk_thread_detach(tlk_thread_t thread) {
  * Perform a join operation on @thread and puts exit value in @exit_code, if any
  * Returns 0 on success, propagates errors on fail
  */
-int tlk_thread_join(tlk_thread_t thread, void *exit_code) {
+int tlk_thread_join(tlk_thread_t *thread, void *exit_code) {
 
   int ret;
 
 #if defined(_WIN32) && _WIN32
 
-  ret = (WaitForSingleObject(thread, INFINITE) != WAIT_FAILED ? 0:1);
-
+  ret = (WaitForSingleObject(*thread, INFINITE) != WAIT_FAILED ? 0:1);
+	printf("ret is %d\n", ret);
   if (ret) {
     return ret;
   } else {
-    ret = (GetExitCodeThread(thread, exit_code) != FALSE ? 0:1);
+		ret = (GetExitCodeThread(*thread, &exit_code) != FALSE ? 0:1);
+		printf("exitcode ok? %d\n", ret);
   }
 
 #elif defined(__linux__) && __linux__

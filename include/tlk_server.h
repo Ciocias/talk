@@ -3,12 +3,12 @@
 
 #include <string.h>
 
+#include "tlk_sockets.h"
 #include "tlk_common.h"
 #include "tlk_util.h"
 #include "tlk_users.h"
 #include "tlk_msg_queue.h"
 #include "tlk_errors.h"
-#include "tlk_sockets.h"
 #include "tlk_semaphores.h"
 #include "tlk_linked_list.h"
 #include "tlk_threads.h"
@@ -47,6 +47,6 @@ void * user_receiver (void *arg);
 #endif
 
 /* Chat session handler */
-void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_node_t *t_node);
+void user_chat_session (tlk_user_t *user, thread_node_t *t_node);
 
 #endif

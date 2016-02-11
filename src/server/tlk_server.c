@@ -35,7 +35,7 @@ unsigned short initialize_server (const char *argv[]) {
 
   /* Initialize user data semaphore */
   if (LOG) printf("--> Initialize user data semaphore\n");
-  ret = tlk_sem_init(&users_mutex, 1);
+  ret = tlk_sem_init(&users_mutex, 1, 1);
   ERROR_HELPER(ret, "Cannot create users_mutex semaphore");
 
   /* Initialize global current_users */
@@ -146,7 +146,7 @@ void server_main_loop (unsigned short port_number) {
     ret = tlk_thread_create(&user_thread, (tlk_thread_func) user_handler, (tlk_thread_args) new_user);
     PTHREAD_ERROR_HELPER(ret, "Cannot create thread");
 
-    ret = tlk_thread_detach(user_thread);
+    ret = tlk_thread_detach(&user_thread);
     PTHREAD_ERROR_HELPER(ret, "Cannot detach newly created thread");
 
     if (LOG) printf("--> Thread created, allocate new space for next client\n");
@@ -171,6 +171,9 @@ void * broker_routine (void *arg)
     int ret;
     thread_node_t *node;
 
+		printf("\n\nempty_count: %d\n\n", (waiting_queue->empty_count) == -1);
+		printf("\n\nempty_count: %d\n\n", (waiting_queue->empty_count) == NULL);
+		printf("\n\nempty_count: %d\n\n", (waiting_queue->empty_count) == INVALID_HANDLE_VALUE);
 
     /* Check for messages in the waiting queue */
     if (LOG) printf("\n\t*** [BRK] Check for messages in the waiting queue\n\n");
@@ -302,9 +305,9 @@ void * user_handler (void *arg)
   send_help(user -> socket);
 
   /* Launch user queue-checking routine */
-  if (LOG) printf("\n-> Launch %s queue-checking routine thread\n\n", user -> nickname);
-
-  tlk_thread_t queue_checker;
+/*
+	if (LOG) printf("\n-> Launch %s queue-checking routine thread\n\n", user -> nickname);
+	tlk_thread_t queue_checker;
   queue_thread_arg_t *args = (queue_thread_arg_t *) malloc(sizeof(queue_thread_arg_t));
 
   args -> node = t_node;
@@ -312,10 +315,10 @@ void * user_handler (void *arg)
 
   ret = tlk_thread_create(&queue_checker, (tlk_thread_func) user_receiver, (tlk_thread_args) args);
   PTHREAD_ERROR_HELPER(ret, "Cannot create thread");
-
+*/
   /* User chat session */
   if (LOG) printf("\n\t*** [USR] User chat session started\n\n");
-  user_chat_session(user, &queue_checker, t_node);
+  user_chat_session(user, t_node);
 
   /* We do a clean exit inside close_and_free_chat_session() */
   return NULL;
@@ -344,14 +347,12 @@ void * user_receiver (void *arg)
       tlk_thread_exit((tlk_exit_t) NULL);
     }
 
-    printf("msg -> %s\n", tlk_msg -> content);
-
     if (tlk_msg != NULL) {
       /* TODO: quit command handling */
-      printf("msg -> %s\n", tlk_msg -> content);
 
-      if (strncmp(tlk_msg -> content, "/quit", strlen("/quit") + 1) == 0) {
-        tlk_thread_exit((tlk_exit_t) NULL);
+      if (strncmp(tlk_msg -> content, "/quit", strlen("/quit")) == 0) {
+				printf("\n\t*** [QCR] Exiting...\n\n");
+				tlk_thread_exit((tlk_exit_t) NULL);
       }
 
       /* Not a command: send it to our user */
@@ -365,13 +366,24 @@ void * user_receiver (void *arg)
 }
 
 /* Chat session handler */
-void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_node_t *t_node) {
+void user_chat_session (tlk_user_t *user, thread_node_t *t_node) {
   int ret;
   int quit = 0;
   tlk_message_t *tlk_msg;
 
   char msg[MSG_SIZE];
   char error_msg[MSG_SIZE];
+
+	if (LOG) printf("\n-> Launch %s queue-checking routine thread\n\n", user->nickname);
+	tlk_thread_t queue_checker;
+	queue_thread_arg_t *args = (queue_thread_arg_t *)malloc(sizeof(queue_thread_arg_t));
+
+	args->node = t_node;
+	args->socket = user->socket;
+
+	ret = tlk_thread_create(&queue_checker, (tlk_thread_func)user_receiver, (tlk_thread_args)args);
+	PTHREAD_ERROR_HELPER(ret, "Cannot create thread");
+
 
   do {
     /* TODO: remove after testing */
@@ -578,7 +590,7 @@ void user_chat_session (tlk_user_t *user, tlk_thread_t *queue_checker, thread_no
   }
 
   /* Wait for user_receiver termination */
-  ret = tlk_thread_join(*queue_checker, NULL);
+  ret = tlk_thread_join(&queue_checker, NULL);
   PTHREAD_ERROR_HELPER(ret, "Cannot join queue_checker created thread");
 
   /* Deallocate thread_node_t struct */
@@ -607,7 +619,7 @@ int main (int argc, const char *argv[]) {
   ret = tlk_thread_create(&broker_thread, (tlk_thread_func) broker_routine,  NULL);
   PTHREAD_ERROR_HELPER(ret, "Cannot create thread");
 
-  ret = tlk_thread_detach(broker_thread);
+  ret = tlk_thread_detach(&broker_thread);
   PTHREAD_ERROR_HELPER(ret, "Cannot detach newly created thread");
 
   /* Listen for incoming connections */

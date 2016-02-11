@@ -10,12 +10,14 @@
 
 #if defined(_WIN32) && _WIN32
 
+#define _WINSOCKAPI_
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
 
-#include <Windows.h>
 #include <Winsock2.h>
+#include <Windows.h>
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 

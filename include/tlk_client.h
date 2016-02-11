@@ -1,10 +1,10 @@
 #ifndef TLK_CLIENT_H
 #define TLK_CLIENT_H
 
+#include "tlk_sockets.h"
 #include "tlk_common.h"
 #include "tlk_util.h"
 #include "tlk_errors.h"
-#include "tlk_sockets.h"
 #include "tlk_threads.h"
 
 /* Initialize client data */

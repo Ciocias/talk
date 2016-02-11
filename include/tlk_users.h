@@ -1,8 +1,8 @@
 #ifndef TLK_USERS_H
 #define TLK_USERS_H
 
-#include "tlk_linked_list.h"
 #include "tlk_sockets.h"
+#include "tlk_linked_list.h"
 #include "tlk_threads.h"
 #include "tlk_common.h"
 #include "tlk_semaphores.h"

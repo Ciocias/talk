@@ -16,7 +16,7 @@ tlk_socket_t initialize_client (const char *argv[]) {
 
   /* Parse IP address */
   if (LOG) printf("--> Parse IP address\n");
-  ret = tlk_inet_pton(AF_INET, argv[1], (void *) &ip_addr);
+  ret = inet_pton(AF_INET, argv[1], (void *) &ip_addr);
 
   if (ret <= 0) {
     if (ret == 0) {
@@ -133,11 +133,11 @@ void chat_session (tlk_socket_t socket, const char *nickname) {
 
     /* Wait for termination */
     if (LOG) printf("--> Wait for receiver thread termination\n");
-    ret = tlk_thread_join(chat_threads[0], &exit_code);
+    ret = tlk_thread_join(&chat_threads[0], &exit_code);
     GENERIC_ERROR_HELPER(ret, exit_code, "Cannot wait for receiver thread termination");
 
     if (LOG) printf("--> Wait for sender thread termination\n");
-    ret = tlk_thread_join(chat_threads[1], &exit_code);
+    ret = tlk_thread_join(&chat_threads[1], &exit_code);
     GENERIC_ERROR_HELPER(ret, exit_code, "Cannot wait for sender thread termination");
 
     /* Clean resources */

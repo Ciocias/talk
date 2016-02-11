@@ -4,6 +4,7 @@
 typedef int tlk_thread_id; /* TEMP */
 
 #if defined(_WIN32) && _WIN32
+#define _WINSOCKAPI_
 
 #include <Windows.h>
 
@@ -49,13 +50,13 @@ int tlk_thread_create(tlk_thread_t *thread, tlk_thread_func thread_routine, tlk_
  * Detaches @thread from the current process
  * Returns 0 on success, propagates errors on fail
  */
-int tlk_thread_detach(tlk_thread_t thread);
+int tlk_thread_detach(tlk_thread_t *thread);
 
 /*
  * Perform a join operation on @thread and puts exit value in @exit_code, if any
  * Returns 0 on success, propagates errors on fail
  */
-int tlk_thread_join(tlk_thread_t thread, void *exit_code);
+int tlk_thread_join(tlk_thread_t *thread, void *exit_code);
 
 /*
  * Terminates the current thread with @exit_code

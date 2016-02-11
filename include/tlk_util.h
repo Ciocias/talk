@@ -10,6 +10,8 @@
 #include "tlk_errors.h"
 
 #if defined(_WIN32) && _WIN32
+#define _WINSOCKAPI_
+
 #include <Winsock2.h>
 #elif defined(__linux__) && __linux__
 #include <netinet/in.h>

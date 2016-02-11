@@ -2,10 +2,11 @@
 #define TLK_SEMAPHORES_H
 
 #if defined(_WIN32) && _WIN32
+#define _WINSOCKAPI_
 
 #include <Windows.h>
 
-#define MAX_SEM_COUNT 2048 /* TODO: check max count */
+#define MAX_SEM_COUNT 1024 /* TODO: check max count */
 
 typedef HANDLE tlk_sem_t;
 
@@ -21,13 +22,13 @@ typedef sem_t tlk_sem_t;
  * Initialize the semaphore pointed by @sem with @value
  * Returns 0 on success, propagates errors on fail
  */
-int tlk_sem_init(tlk_sem_t *sem, unsigned int value);
+int tlk_sem_init(tlk_sem_t *sem, unsigned int value, unsigned int max_value);
 
 /*
  * Close and destroy @sem
  * Returns 0 on success, propagates errors on fail
  */
-int tlk_sem_destroy(tlk_sem_t *sem);
+int tlk_sem_destroy(tlk_sem_t sem);
 
 /*
  * Perform a wait operation on @sem
