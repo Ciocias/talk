@@ -4,6 +4,13 @@
   + [ ] Project description
   + [ ] Update building instructions for Windows
   + [ ] Test build docs
+- [ ] Review libraries code
+  + [ ] msg_queue
+  + [x] semaphores
+  + [x] sockets
+  + [ ] threads
+  + [ ] users
+  + [ ] util
 
 ## Milestone 0.1
 - [x] Basic server commands
@@ -15,4 +22,5 @@
 - [ ] Code factoring
 
 ## Milestone 0.2
-- [ ] signal handling
+- [ ] Signal handling
+  + [ ] SIGINT to clean exit (WSACleanup on windows)

@@ -2,6 +2,7 @@
 
 /*
  * Initialize the semaphore pointed by @sem with @value
+ * @max_value is needed on windows
  * Returns 0 on success, -1 on failure
  */
 int tlk_sem_init(tlk_sem_t *sem, unsigned int value, unsigned int max_value) {
@@ -54,19 +55,8 @@ int tlk_sem_wait(tlk_sem_t *sem) {
 
 #if defined(_WIN32) && _WIN32
 
-	ret = WaitForSingleObject(*sem, INFINITE)/* != WAIT_FAILED ? 0 : -1)*/;
+	ret = WaitForSingleObject(*sem, INFINITE) != WAIT_FAILED ? 0 : -1);
 
-	switch (ret) {
-		case WAIT_OBJECT_0:
-			break;
-		case WAIT_TIMEOUT:
-			printf("\nwait_timeout\n");
-			break;
-		case WAIT_FAILED:
-			printf("\nwait_failed\n");
-			printf("sem is null: %d\nGetLastError: %d\n", *sem == NULL, GetLastError());
-			break;
-	}
 #elif defined(__linux__) && __linux__
 
   ret = sem_wait(sem);
