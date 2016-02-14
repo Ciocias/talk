@@ -1,6 +1,6 @@
 # Wanted (Dead or Alive)
 
-- [x] Write proper docs and readme
+- [ ] Write proper docs and readme
   + [ ] Project description
   + [ ] Update building instructions for Windows
   + [ ] Test build docs
@@ -11,10 +11,16 @@
   + [ ] threads
   + [ ] users
   + [ ] util
+- [ ] Fix tlk_threads on Windows
+- [ ] Successful Windows build
+- [ ] Successful GNU/Linux build
 
 ## Milestone 0.1
+- [ ] Write proper docs and readme
+- [ ] Review libraries code
 - [x] Basic server commands
 - [x] Correct quit handling for client
+- [x] Correct quit handling for server
 - [x] Talk command implementation
 - [ ] Fix tlk_threads on Windows
 - [ ] Successful Windows build
