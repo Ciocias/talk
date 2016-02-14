@@ -5,7 +5,7 @@
   + [ ] Update building instructions for Windows
   + [ ] Test build docs
 - [ ] Review libraries code
-  + [ ] msg_queue
+  + [x] msg_queue
   + [x] semaphores
   + [x] sockets
   + [ ] threads
