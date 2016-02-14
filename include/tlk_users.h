@@ -2,13 +2,12 @@
 #define TLK_USERS_H
 
 #include "tlk_sockets.h"
-#include "tlk_linked_list.h"
 #include "tlk_threads.h"
 #include "tlk_common.h"
 #include "tlk_semaphores.h"
-#include "tlk_errors.h"
 
-#include "string.h"
+#define MAX_USERS_ERROR 1
+#define NICKNAME_ERROR  2
 
 typedef enum {
   IDLE,
@@ -33,19 +32,26 @@ typedef struct _tlk_message_s {
 
 /*
  * Register @user into extern users_list if possible, thread-safe
- * Returns 0 on success, propagates errors on fail
+ * Returns:
+ *   0 on success,
+ *   -1 on semaphore errors,
+ *   MAX_USERS_ERROR if users count exceed the limit,
+ *   NICKNAME_ERROR if nickname is already taken;
  */
 int tlk_user_register (tlk_user_t *user);
 
 /*
  * Delete user associated with @socket from extern users_list and deallocates memory, thread-safe
- * Returns 0 on success, propagates errors on fail
+ * Returns:
+ *   0 on success,
+ *   -1 on semaphore errors,
+ *   TLK_SOCKET_ERROR on socket errors
  */
 int tlk_user_delete (tlk_user_t *user);
 
 /*
- *
- *
+ * Try to find @nickname as a registered user
+ * Returns a pointer if found, NULL on failure
  */
 tlk_user_t *tlk_user_find(char *nickname);
 
