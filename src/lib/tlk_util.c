@@ -1,5 +1,9 @@
 #include "../../include/tlk_util.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 /*
  * Parse network-ordered port number from @input string and put it in @output
  * Returns 0 on success, -1 on failure
@@ -19,34 +23,26 @@ int parse_port_number (const char *input, unsigned short *output) {
 }
 
 /*
- * Print usage (server version)
+ * Close @user socket and free structure
+ * Exit thread on success, TLK_SOCKET_ERROR on socket shutdown or close failure
  */
-void usage_error_server (const char *prog_name) {
-  fprintf(stderr, "Usage: %s <port_number>\n", prog_name);
-  exit(EXIT_FAILURE);
-}
+int close_and_free_session (tlk_user_t *user) {
+  int ret = 0;
 
-/*
- * Print usage (client version)
- */
-void usage_error_client (const char *prog_name) {
-  fprintf(stderr, "Usage: %s <IP_address> <port_number> <nickname>\n", prog_name);
-  exit(EXIT_FAILURE);
-}
+  ret = tlk_socket_shutdown(user -> socket, TLK_SOCKET_RW);
+  if (ret == TLK_SOCKET_ERROR) return ret;
 
-/*
- * Free @user socket and data structure
- * Exit thread on return
- */
-void close_and_free_chat_session (tlk_user_t *user) {
-  fprintf(stderr, "User connection unexpectedly closed\n");
+  ret = tlk_socket_close(user -> socket);
+  if (ret == TLK_SOCKET_ERROR) return ret;
 
-  int ret = tlk_socket_close(user -> socket);
-  ERROR_HELPER(ret, "Cannot close user socket");
-
+  free(user -> nickname);
   free(user -> address);
   free(user);
+
   tlk_thread_exit((tlk_exit_t) NULL);
+
+  /* Avoid compiler warnings */
+  return ret;
 }
 
 /*
@@ -54,7 +50,7 @@ void close_and_free_chat_session (tlk_user_t *user) {
  * Returns the number of bytes sent on success, TLK_SOCKET_ERROR on failure
  */
 int send_msg (tlk_socket_t socket, const char *msg) {
-  int ret;
+  int ret = 0;
   char msg_to_send[MSG_SIZE];
 
   snprintf(
@@ -80,7 +76,7 @@ int send_msg (tlk_socket_t socket, const char *msg) {
   }
   ret = send(socket, "\n", 1, 0);
 
-  return ret;
+  return bytes_sent;
 }
 
 /*
@@ -91,7 +87,7 @@ int send_msg (tlk_socket_t socket, const char *msg) {
  *  TLK_SOCKET_ERROR on failure
  */
 int recv_msg (tlk_socket_t socket, char *buf, int buf_len) {
-  int ret;
+  int ret = 0;
   int bytes_read = 0;
 
   while (bytes_read <= buf_len) {
@@ -127,7 +123,7 @@ int parse_join_msg (char *msg, size_t msg_len, char *nickname) {
 
     snprintf(
       join_msg_prefix,
-      strlen("/join "),
+      strlen(JOIN_COMMAND) + 2,
       "%c%s ",
       COMMAND_CHAR, JOIN_COMMAND
     );
@@ -226,7 +222,10 @@ void send_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
 
 }
 
-/* TODO: send_unknown description */
+/*
+ * Send UNKNOWN_CMD_MSG through @socket
+ * Returns nothing
+ */
 int send_unknown (tlk_socket_t socket) {
 
   char msg[MSG_SIZE];
@@ -235,8 +234,11 @@ int send_unknown (tlk_socket_t socket) {
   return send_msg(socket, msg);
 }
 
-/* TODO: send_die description */
-int send_die (tlk_user_t *user, tlk_queue_t *queue) {
+/*
+ * Enqueue a DIE_MSG for @user into @queue
+ * Returns 0 on success, -1 on failure
+ */
+int terminate_receiver (tlk_user_t *user, tlk_queue_t *queue) {
 
   char error_msg[MSG_SIZE];
   snprintf(error_msg, strlen(DIE_MSG) + 1, DIE_MSG);
@@ -250,43 +252,46 @@ int send_die (tlk_user_t *user, tlk_queue_t *queue) {
   );
 }
 
-/* TODO: talk_session description */
-int talk_session (tlk_user_t *user, char msg[MSG_SIZE], tlk_queue_t *queue) {
+/*
+ * Try to establish a talk session
+ * Returns:
+ *   0 on success,
+ *   -1 on enqueuing failure,
+ *   1 if listener is NULL or TALKING
+ */
+int talk_session (tlk_user_t *user, tlk_queue_t *queue) {
 
-  char error_msg[MSG_SIZE];
-  if ((user -> listener) == NULL) {
+  char msg[MSG_SIZE];
 
+  if ((user -> listener) == NULL)
     return 1;
 
-  } else {
+  if ((user -> listener) -> status == IDLE) {
 
-    if ((user -> listener) -> status == IDLE) {
+    /* Start talking with listener */
+    user -> status = TALKING;
+    (user -> listener) -> status = TALKING;
+    (user -> listener) -> listener = user;
 
-      /* Start talking with listener */
-      user -> status = TALKING;
-      (user -> listener) -> status = TALKING;
-      (user -> listener) -> listener = user;
+    /* Send an information message */
+    snprintf(msg, strlen(BEGIN_CHAT_MSG) + strlen(user -> nickname), BEGIN_CHAT_MSG, user -> nickname);
 
-      /* Send an information message */
-      snprintf(error_msg, strlen(BEGIN_CHAT_MSG) + strlen(user -> nickname), BEGIN_CHAT_MSG, user -> nickname);
-
-      return pack_and_send_msg(
-        (user -> listener) -> id,
-        user,
-        user -> listener,
-        error_msg,
-        queue
-      );
-
-    } else {
-      return 1;
-    }
+    return pack_and_send_msg(
+      (user -> listener) -> id,
+      user,
+      user -> listener,
+      msg,
+      queue
+    );
   }
 
-  return -1;
+  return 1;
 }
 
-/* TODO: pack_and_send_msg description */
+/*
+ * Setup a new tlk_message_t with @msg as content and put it in @queue
+ * Returns 0 on success, -1 on failure
+ */
 int pack_and_send_msg (int id, tlk_user_t *sender, tlk_user_t *receiver, char *msg, tlk_queue_t *queue)
 {
 

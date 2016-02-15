@@ -1,5 +1,6 @@
 #include "../../include/tlk_users.h"
 
+#include <stdlib.h>
 #include <string.h>
 
 extern tlk_sem_t users_mutex;

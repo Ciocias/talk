@@ -18,6 +18,14 @@ typedef struct _queue_thread_arg_s {
   tlk_socket_t socket;
 } queue_thread_arg_t;
 
+/*
+ * Print server usage to standard error
+ */
+void usage_error_server (const char *prog_name) {
+  fprintf(stderr, "Usage: %s <port_number>\n", prog_name);
+  exit(EXIT_FAILURE);
+}
+
 /* Initialize server data */
 unsigned short initialize_server (const char *argv[]) {
 
@@ -234,7 +242,7 @@ void * user_handler (void *arg)
   linked_list_iterator *lli = linked_list_iterator_new(threads_queues);
   if (lli == NULL) {
     fprintf(stderr, "Cannot get thread specific queue\n");
-    close_and_free_chat_session(user);
+    close_and_free_session(user);
   }
 
   while (lli != NULL) {
@@ -243,7 +251,7 @@ void * user_handler (void *arg)
     t_node = (thread_node_t *) linked_list_iterator_getvalue(lli);
     if (t_node == NULL) {
       fprintf(stderr, "Cannot get thread specific queue\n");
-      close_and_free_chat_session(user);
+      close_and_free_session(user);
     }
 
     if (t_node -> id == user -> id) break;
@@ -304,8 +312,8 @@ void * user_handler (void *arg)
   if (LOG) printf("\n\t*** [USR] User chat session started\n\n");
   user_chat_session(user, t_node);
 
-  /* We do a clean exit inside close_and_free_chat_session() */
-  return NULL;
+  /* Avoid compiler warnings */
+  return (tlk_exit_t) NULL;
 }
 
 /* User queue-checking thread */
@@ -379,6 +387,7 @@ void commands_handler(int *quit, tlk_user_t *user, tlk_queue_t *queue, char msg[
     size_t msg_len = strlen(msg);
     size_t talk_command_len = strlen(TALK_COMMAND) + 1;
 
+    /* Send error if no nickname is specified */
     if (msg_len <= talk_command_len + 1) {
 
       if (LOG) printf("\n\t*** [USR] Error no nickname specified\n\n");
@@ -398,16 +407,20 @@ void commands_handler(int *quit, tlk_user_t *user, tlk_queue_t *queue, char msg[
       ret = send_msg(user -> socket, error_msg);
       if (ret == TLK_SOCKET_ERROR) {
         if (LOG) printf("\n\t*** [USR] Cannot send error_msg to user %s\n\n", user -> nickname);
-        tlk_thread_exit((tlk_exit_t) NULL);
+
+        terminate_receiver(user, queue);
+        close_and_free_session(user);
       }
 
     }
 
     /* Try to start a talking session with the given nickname */
-    ret = talk_session(user, msg, queue);
-    if (ret) {
+    ret = talk_session(user, queue);
+    if (ret < 0) {
       if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
-        tlk_thread_exit((tlk_exit_t) NULL);
+
+      terminate_receiver(user, queue);
+      close_and_free_session(user);
     }
   }
   else if (strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0)
@@ -418,7 +431,7 @@ void commands_handler(int *quit, tlk_user_t *user, tlk_queue_t *queue, char msg[
 
     *quit = 1;
 
-    ret = send_die(user, queue);
+    ret = terminate_receiver(user, queue);
     if (ret) {
       if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
       tlk_thread_exit((tlk_exit_t) NULL);
@@ -542,7 +555,7 @@ void user_chat_session (tlk_user_t *user, thread_node_t *t_node) {
       if (LOG) printf("\n\t*** [USR] Client connection unexpectedly closed\n\n");
       quit = -1;
 
-      ret = send_die(user, waiting_queue);
+      ret = terminate_receiver(user, waiting_queue);
       if (ret) {
         if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
         tlk_thread_exit((tlk_exit_t) NULL);

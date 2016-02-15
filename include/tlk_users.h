@@ -3,8 +3,8 @@
 
 #include "tlk_sockets.h"
 #include "tlk_threads.h"
-#include "tlk_common.h"
 #include "tlk_semaphores.h"
+#include "tlk_common.h"
 
 #define MAX_USERS_ERROR 1
 #define NICKNAME_ERROR  2
@@ -55,4 +55,4 @@ int tlk_user_delete (tlk_user_t *user);
  */
 tlk_user_t *tlk_user_find(char *nickname);
 
-#endif
+#endif /* TLK_USERS_H */

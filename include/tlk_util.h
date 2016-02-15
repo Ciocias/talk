@@ -1,14 +1,9 @@
 #ifndef TLK_UTIL_H
 #define TLK_UTIL_H
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "tlk_sockets.h"
 #include "tlk_msg_queue.h"
 #include "tlk_users.h"
-#include "tlk_errors.h"
 
 #if defined(_WIN32) && _WIN32
 
@@ -26,26 +21,23 @@
 int parse_port_number (const char *input, unsigned short *output);
 
 /*
- * Print usage functions (server/client version)
+ * Close @user socket and free structure
+ * Exit thread on success, TLK_SOCKET_ERROR on socket shutdown or close failure
  */
-void usage_error_server (const char *prog_name);
-void usage_error_client (const char *prog_name);
-
-/*
- * Free @user socket and data structure
- * Exit thread on return
- */
-void close_and_free_chat_session (tlk_user_t *user);
+int close_and_free_session (tlk_user_t *user);
 
 /*
  * Send @msg on @socket
- * Returns nothing
+ * Returns the number of bytes sent on success, TLK_SOCKET_ERROR on failure
  */
 int send_msg (tlk_socket_t socket, const char *msg);
 
 /*
  * Receive @buf_len bytes from @socket and put contents inside @buf
- * Returns true bytes read
+ * Returns:
+ *  Number of bytes read on success
+ *  TLK_CONN_CLOSED if the endpoint has closed gracefully
+ *  TLK_SOCKET_ERROR on failure
  */
 int recv_msg (tlk_socket_t socket, char *buf, int buf_len);
 
@@ -67,19 +59,31 @@ void send_help (tlk_socket_t socket);
  */
 void send_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]);
 
-/* TODO: send_unknown description */
+/*
+ * Send UNKNOWN_CMD_MSG through @socket
+ * Returns nothing
+ */
 int send_unknown (tlk_socket_t socket);
 
-/* TODO: parse_talkmsg_target description */
-void parse_talkmsg_target(char msg[MSG_SIZE]);
+/*
+ * Enqueue a DIE_MSG for @user into @queue
+ * Returns 0 on success, -1 on failure
+ */
+int terminate_receiver (tlk_user_t *user, tlk_queue_t *queue);
 
-/* TODO: send_die description */
-int send_die (tlk_user_t *user, tlk_queue_t *queue);
+/*
+ * Try to establish a talk session
+ * Returns:
+ *   0 on success,
+ *   -1 on enqueuing failure,
+ *   1 if listener is NULL or TALKING
+ */
+int talk_session (tlk_user_t *user, tlk_queue_t *queue);
 
-/* TODO: talk_session description */
-int talk_session (tlk_user_t *user, char msg[MSG_SIZE], tlk_queue_t *queue);
-
-/* TODO: pack_and_send_msg description */
+/*
+ * Setup a new tlk_message_t with @msg as content and put it in @queue
+ * Returns 0 on success, -1 on failure
+ */
 int pack_and_send_msg (int id, tlk_user_t *sender, tlk_user_t *receiver, char *msg, tlk_queue_t *queue);
 
-#endif
+#endif /* TLK_UTIL_H */

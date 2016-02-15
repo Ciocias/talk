@@ -43,4 +43,4 @@
 #define DIE_MSG              "die"
 #define UNKNOWN_CMD_MSG      "Unknown command, type %c%s for a list of available commands"
 
-#endif
+#endif /* TLK_COMMON_H */

@@ -4,6 +4,14 @@
 
 int shouldStop = 0;
 
+/*
+ * Print client usage to standard error
+ */
+void usage_error_client (const char *prog_name) {
+  fprintf(stderr, "Usage: %s <IP_address> <port_number> <nickname>\n", prog_name);
+  exit(EXIT_FAILURE);
+}
+
 /* Initialize client data */
 tlk_socket_t initialize_client (const char *argv[]) {
 

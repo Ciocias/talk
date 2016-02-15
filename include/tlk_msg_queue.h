@@ -43,4 +43,4 @@ int tlk_queue_dequeue (tlk_queue_t *q, tlk_message_t *msg);
  */
 int tlk_queue_free (tlk_queue_t *q);
 
-#endif
+#endif /* TLK_MSG_QUEUE_H */
