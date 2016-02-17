@@ -29,7 +29,7 @@ void server_main_loop (unsigned short port_number);
 #if defined(_WIN32) && _WIN32
 DWORD WINAPI broker_routine (LPVOID arg);
 #elif defined(__linux__) && __linux__
-void * broker_routine (void *arg);
+void * broker_routine (void);
 #endif
 
 /* User handler thread */

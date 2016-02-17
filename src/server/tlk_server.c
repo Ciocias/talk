@@ -133,7 +133,7 @@ void server_main_loop (unsigned short port_number) {
 DWORD WINAPI broker_routine (LPVOID arg)
 #elif defined(__linux__) && __linux__
 
-void * broker_routine (void *arg)
+void * broker_routine (void)
 #endif
 {
   tlk_message_t *msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
