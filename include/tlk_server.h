@@ -47,9 +47,9 @@ void * user_receiver (void *arg);
 #endif
 
 /* TODO: commands_handler description */
-void commands_handler(int *quit, tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]);
+int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]);
 
 /* Chat session handler */
-void user_chat_session (tlk_user_t *user, thread_node_t *t_node);
+void user_chat_session (tlk_user_t *user);
 
 #endif

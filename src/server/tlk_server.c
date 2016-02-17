@@ -13,11 +13,6 @@ tlk_queue_t *waiting_queue          = NULL;
 /* Linked list of threads queues */
 linked_list *threads_queues         = NULL;
 
-typedef struct _queue_thread_arg_s {
-  thread_node_t *node;
-  tlk_socket_t socket;
-} queue_thread_arg_t;
-
 /*
  * Print server usage to standard error
  */
@@ -116,40 +111,27 @@ void server_main_loop (unsigned short port_number) {
     if (client_desc == -1 && errno == TLK_EINTR) continue;
     ERROR_HELPER(client_desc, "Cannot accept on socket");
 
-    /* Launch user handler thread */
-    if (LOG) printf("--> Launch user handler thread\n");
-    tlk_thread_t user_thread;
-
-    tlk_user_t *new_user = (tlk_user_t *) malloc(sizeof(tlk_user_t));
+    /* Create new user */
+    if (LOG) printf("--> Create new user\n");
+    tlk_user_t *new_user;
 
     ret = tlk_sem_wait(&users_mutex);
     ERROR_HELPER(ret, "Cannot wait on users_mutex semaphore");
 
-    new_user -> id        = incremental_id;
-    new_user -> status    = IDLE;
-    new_user -> socket    = client_desc;
-    new_user -> address   = client_addr;
-    new_user -> nickname  = (char *) malloc(NICKNAME_SIZE * sizeof(char));
-
-    thread_node_t *node = (thread_node_t *) malloc(sizeof(thread_node_t));
-    node -> id = incremental_id;
+    new_user = tlk_user_new(incremental_id, client_desc, client_addr);
+    if (new_user == NULL) {
+      fprintf(stderr, "Cannot create new user");
+      exit(EXIT_FAILURE);
+    }
 
     incremental_id += 1;
 
     ret = tlk_sem_post(&users_mutex);
     ERROR_HELPER(ret, "Cannot post on users_mutex semaphore");
 
-    node -> queue = tlk_queue_new(QUEUE_SIZE);
-    if (node -> queue == NULL) {
-      fprintf(stderr, "Cannot create waiting queue with size %d\n", QUEUE_SIZE);
-      exit(EXIT_FAILURE);
-    }
-
-    ret = linked_list_add(threads_queues, (void *) node);
-    if (ret == LINKED_LIST_NOK) {
-      fprintf(stderr, "Cannot add new list item\n");
-      exit(EXIT_FAILURE);
-    }
+    /* Launch user handler thread */
+    if (LOG) printf("--> Launch user handler thread\n");
+    tlk_thread_t user_thread;
 
     ret = tlk_thread_create(&user_thread, (tlk_thread_func) user_handler, (tlk_thread_args) new_user);
     PTHREAD_ERROR_HELPER(ret, "Cannot create thread");
@@ -171,56 +153,43 @@ DWORD WINAPI broker_routine (LPVOID arg)
 void * broker_routine (void *arg)
 #endif
 {
-  if (LOG) printf("\n\t*** [BRK] Broker thread running\n\n");
-  /* TODO: deallocate *msg  */
   tlk_message_t *msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
+
   while (1)
   {
     int ret;
-    thread_node_t *node;
 
     /* Check for messages in the waiting queue */
-    if (LOG) printf("\n\t*** [BRK] Check for messages in the waiting queue\n\n");
-    ret = tlk_queue_dequeue(waiting_queue, msg);
+    ret = tlk_queue_dequeue(waiting_queue, (void **) &msg);
     if (ret != 0) {
-      fprintf(stderr, "Cannot read from waiting_queue\n");
-      exit(EXIT_FAILURE);
+      if (LOG) fprintf(stderr, "[BRK] Cannot check for messages in the waiting queue\n");
+      break;
     }
 
-    /* Select correct thread queue from list */
-    if (LOG) printf("\n\t*** [BRK] Select correct thread queue from list\n\n");
 
-    linked_list_iterator *lli = linked_list_iterator_new(threads_queues);
-    if (lli == NULL) {
-      fprintf(stderr, "Cannot get thread specific queue\n");
-      exit(EXIT_FAILURE);
-    }
+    /* Select correct user queue from @users_list */
+    unsigned int i;
+    for (i = 0; i < current_users; i++) {
 
-    while (lli != NULL) {
+      if (users_list[i] -> id == (msg -> receiver) -> id) {
 
-      node = NULL;
-      node = (thread_node_t *) linked_list_iterator_getvalue(lli);
-      if (node == NULL) {
-        fprintf(stderr, "Cannot get thread specific queue\n");
-        exit(EXIT_FAILURE);
+        /* Sort message in correct queue */
+        ret = tlk_queue_enqueue(users_list[i] -> queue, (void **) &msg);
+        if (ret != 0) {
+          if (LOG) fprintf(stderr, "[BRK] Cannot sort message in correct queue\n");
+          break;
+        }
       }
-
-      if (node -> id == (msg -> receiver) -> id) break;
-
-      lli = linked_list_iterator_next(lli);
-    }
-
-    if (node == NULL) continue;
-
-    /* Sort message in correct queue */
-    if (LOG) printf("\n\t*** [BRK] Sort message in correct queue\n\n");
-    ret = tlk_queue_enqueue(node -> queue, (const tlk_message_t *) msg);
-    if (ret != 0) {
-      fprintf(stderr, "Cannot enqueue message\n");
-      exit(EXIT_FAILURE);
     }
 
   }
+
+  /* Deallocate @msg and exit thread */
+  if (msg != NULL) free(msg);
+  tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
+
+  /* Avoid compiler warnings */
+  return (tlk_exit_t) EXIT_SUCCESS;
 }
 
 /* User handler thread */
@@ -234,50 +203,28 @@ void * user_handler (void *arg)
 {
   int ret;
   char msg[MSG_SIZE];
-  thread_node_t *t_node;
   tlk_user_t *user = (tlk_user_t *) arg;
 
   if (LOG) printf("\n\t*** [USR] User handler thread running\n\n");
-
-  linked_list_iterator *lli = linked_list_iterator_new(threads_queues);
-  if (lli == NULL) {
-    fprintf(stderr, "Cannot get thread specific queue\n");
-    close_and_free_session(user);
-  }
-
-  while (lli != NULL) {
-
-    t_node = NULL;
-    t_node = (thread_node_t *) linked_list_iterator_getvalue(lli);
-    if (t_node == NULL) {
-      fprintf(stderr, "Cannot get thread specific queue\n");
-      close_and_free_session(user);
-    }
-
-    if (t_node -> id == user -> id) break;
-
-    lli = linked_list_iterator_next(lli);
-  }
 
   /* Wait for a join message from client */
   if (LOG) printf("\n\t*** [USR] Wait for a join message from client\n\n");
   int join_msg_len = recv_msg(user -> socket, msg, MSG_SIZE);
 
-  if (join_msg_len < 0) {
-    tlk_thread_exit((tlk_exit_t) NULL);
-  } else if (parse_join_msg(msg, strlen(msg), user -> nickname) != 0) {
+  if (join_msg_len < 0 || parse_join_msg(msg, strlen(msg), user -> nickname) != 0) {
 
     snprintf(msg, strlen(JOIN_FAILED) + 1, "%s", JOIN_FAILED);
 
     if (LOG) printf("\n\t*** [USR] Failed to join new user as %s\n\n", user -> nickname);
     send_msg(user -> socket, msg);
 
+    tlk_user_free(user);
     tlk_thread_exit((tlk_exit_t) NULL);
   }
 
   /* Register new user with given nickname */
   if (LOG) printf("\n\t*** [USR] Register new user as %s\n\n", user -> nickname);
-  ret = tlk_user_register(user);
+  ret = tlk_user_signin(user);
   if (ret != 0) {
 
     snprintf(msg, strlen(REGISTER_FAILED) + 1, "%s", REGISTER_FAILED);
@@ -285,6 +232,7 @@ void * user_handler (void *arg)
     if (LOG) printf("\n\t*** [USR] Failed to register new user as %s\n\n", user -> nickname);
     send_msg(user -> socket, msg);
 
+    tlk_user_free(user);
     tlk_thread_exit((tlk_exit_t) NULL);
   }
 
@@ -293,11 +241,10 @@ void * user_handler (void *arg)
 
   if (LOG) printf("\n\t*** [USR] Successfully registered new user %s!\n\n", user -> nickname);
   ret = send_msg(user -> socket, msg);
-
   if (ret == TLK_SOCKET_ERROR) {
     if (LOG) printf("\n\t*** [USR] Cannot notify the client: delete new user and exit...\n\n");
 
-    tlk_user_delete(user);
+    tlk_user_signout(user);
     tlk_thread_exit((tlk_exit_t) NULL);
   }
 
@@ -310,7 +257,7 @@ void * user_handler (void *arg)
   send_help(user -> socket);
 
   if (LOG) printf("\n\t*** [USR] User chat session started\n\n");
-  user_chat_session(user, t_node);
+  user_chat_session(user);
 
   /* Avoid compiler warnings */
   return (tlk_exit_t) NULL;
@@ -327,28 +274,26 @@ void * user_receiver (void *arg)
 {
   int ret;
   tlk_message_t *tlk_msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
-  queue_thread_arg_t *args = (queue_thread_arg_t *) arg;
+  tlk_user_t *user = (tlk_user_t *) arg;
 
   while (1)
   {
     /* Check own thread queue (reading) and send to user */
     if (LOG) printf("\n\t*** [QCR] Check own thread queue\n\n");
-    ret = tlk_queue_dequeue((args -> node) -> queue, tlk_msg);
+    ret = tlk_queue_dequeue(user -> queue, (void **) &tlk_msg);
     if (ret) {
       if (LOG) printf("\n\t*** [QCR] Dequeuing error, exiting...\n\n");
       tlk_thread_exit((tlk_exit_t) NULL);
     }
 
     if (tlk_msg != NULL) {
-      /* TODO: quit command handling */
-
       if (strncmp(tlk_msg -> content, DIE_MSG, strlen(DIE_MSG)) == 0) {
-				printf("\n\t*** [QCR] Exiting...\n\n");
+				printf("\n\t*** [QCR] Die message received, exiting...\n\n");
 				tlk_thread_exit((tlk_exit_t) NULL);
       }
 
       /* Not a command: send it to our user */
-      ret = send_msg(args -> socket, tlk_msg -> content);
+      ret = send_msg(user -> socket, tlk_msg -> content);
       if (ret == TLK_SOCKET_ERROR) {
         if (LOG) printf("\n\t*** [QCR] Cannot send message to user: exiting...\n\n");
         tlk_thread_exit((tlk_exit_t) NULL);
@@ -358,7 +303,7 @@ void * user_receiver (void *arg)
 }
 
 /* TODO: commands_handler description */
-void commands_handler(int *quit, tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
+int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
 
   int ret;
   char error_msg[MSG_SIZE];
@@ -374,7 +319,7 @@ void commands_handler(int *quit, tlk_user_t *user, tlk_queue_t *queue, char msg[
   {
 
     if (LOG) printf("\n\t*** [USR] User asked the list\n\n");
-    send_list(user -> socket, users_list);
+    send_list(current_users, user -> socket, users_list);
 
   }
   else if (strncmp(msg + 1, TALK_COMMAND, strlen(TALK_COMMAND)) == 0)
@@ -394,7 +339,7 @@ void commands_handler(int *quit, tlk_user_t *user, tlk_queue_t *queue, char msg[
       snprintf(error_msg, strlen(NO_NICKNAME), NO_NICKNAME);
 
       send_msg(user -> socket, error_msg);
-      return;
+      return 0;
     }
 
     /* Try to find user with given nickname */
@@ -402,14 +347,14 @@ void commands_handler(int *quit, tlk_user_t *user, tlk_queue_t *queue, char msg[
     if (user -> listener == NULL) {
       if (LOG) printf("\n\t*** [USR] Unable to start new talk session \n\n");
 
-      snprintf(error_msg, strlen(USER_NOT_FOUND), USER_NOT_FOUND);
+      snprintf(error_msg, strlen(USER_NOT_FOUND) + 1, USER_NOT_FOUND);
 
       ret = send_msg(user -> socket, error_msg);
       if (ret == TLK_SOCKET_ERROR) {
         if (LOG) printf("\n\t*** [USR] Cannot send error_msg to user %s\n\n", user -> nickname);
 
         terminate_receiver(user, queue);
-        close_and_free_session(user);
+        return -1;
       }
 
     }
@@ -420,23 +365,17 @@ void commands_handler(int *quit, tlk_user_t *user, tlk_queue_t *queue, char msg[
       if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
 
       terminate_receiver(user, queue);
-      close_and_free_session(user);
+      return -1;
     }
   }
   else if (strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0)
   {
 
     if (LOG) printf("\n\t*** [USR] User asked to quit\n\n");
-    if (user -> status == TALKING) return;
+    if (user -> status == TALKING) return 0;
 
-    *quit = 1;
-
-    ret = terminate_receiver(user, queue);
-    if (ret) {
-      if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
-      tlk_thread_exit((tlk_exit_t) NULL);
-    }
-
+    terminate_receiver(user, queue);
+    return -1;
   }
   else if(strncmp(msg + 1, CLOSE_COMMAND, strlen(CLOSE_COMMAND)) == 0)
   {
@@ -457,7 +396,9 @@ void commands_handler(int *quit, tlk_user_t *user, tlk_queue_t *queue, char msg[
       );
       if (ret) {
         if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
-        tlk_thread_exit((tlk_exit_t) NULL);
+
+        terminate_receiver(user, queue);
+        return -1;
       }
 
       /* Unset both listeners */
@@ -466,10 +407,14 @@ void commands_handler(int *quit, tlk_user_t *user, tlk_queue_t *queue, char msg[
     }
     else
     {
-      sprintf(error_msg, "Your are idle");
+      sprintf(error_msg, IDLE_MSG);
+
       ret = send_msg(user -> socket, error_msg);
       if (ret == TLK_SOCKET_ERROR) {
         if (LOG) printf("\n\t*** [USR] Cannot send message to user: exiting...\n\n");
+
+        terminate_receiver(user, queue);
+        return -1;
       }
     } /* (user -> status == TALKING) */
   }
@@ -480,15 +425,18 @@ void commands_handler(int *quit, tlk_user_t *user, tlk_queue_t *queue, char msg[
     ret = send_unknown(user -> socket);
     if (ret == TLK_SOCKET_ERROR) {
       if (LOG) printf("\n\t*** [USR] Cannot send error_msg to user %s\n\n", user -> nickname);
-      tlk_thread_exit((tlk_exit_t) NULL);
+
+      terminate_receiver(user, queue);
+      return -1;
     }
 
   } /* Unknown command */
 
+  return 0;
 }
 
 /* Chat session handler */
-void user_chat_session (tlk_user_t *user, thread_node_t *t_node) {
+void user_chat_session (tlk_user_t *user) {
   int ret, exit_code;
   int quit = 0;
 
@@ -496,15 +444,14 @@ void user_chat_session (tlk_user_t *user, thread_node_t *t_node) {
 
   /* Launch user_receiver thread */
   tlk_thread_t receiver_thread;
-	queue_thread_arg_t *args = (queue_thread_arg_t *)malloc(sizeof(queue_thread_arg_t));
   if (LOG) printf("\n-> Launch %s queue-checking routine thread\n\n", user->nickname);
 
-	args->node = t_node;
-	args->socket = user->socket;
-
-	ret = tlk_thread_create(&receiver_thread, (tlk_thread_func)user_receiver, (tlk_thread_args)args);
-	PTHREAD_ERROR_HELPER(ret, "Cannot create user_receiver thread");
-
+	ret = tlk_thread_create(&receiver_thread, (tlk_thread_func) user_receiver, (tlk_thread_args) user);
+	if (ret) {
+    if (LOG) fprintf(stderr, "\n\t*** [USR] Cannot create thread 'user_receiver', exiting...\n\n");
+    tlk_user_signout(user);
+    tlk_thread_exit((tlk_exit_t) NULL);
+  }
 
   do {
     /* Receive data from user */
@@ -519,8 +466,7 @@ void user_chat_session (tlk_user_t *user, thread_node_t *t_node) {
       {
 
         if (LOG) printf("\n\t*** [USR] Handle server commands\n\n");
-        commands_handler(&quit, user, waiting_queue, msg);
-
+        quit = commands_handler(user, waiting_queue, msg);
       }
       else
       {
@@ -539,7 +485,8 @@ void user_chat_session (tlk_user_t *user, thread_node_t *t_node) {
             );
             if (ret) {
               if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
-              tlk_thread_exit((tlk_exit_t) NULL);
+              quit = -1;
+              break;
             }
           } else {
             user -> status = IDLE;
@@ -554,13 +501,7 @@ void user_chat_session (tlk_user_t *user, thread_node_t *t_node) {
       /* Client connection unexpectedly closed */
       if (LOG) printf("\n\t*** [USR] Client connection unexpectedly closed\n\n");
       quit = -1;
-
-      ret = terminate_receiver(user, waiting_queue);
-      if (ret) {
-        if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
-        tlk_thread_exit((tlk_exit_t) NULL);
-      }
-
+      break;
     }
     else
     {
@@ -589,15 +530,13 @@ void user_chat_session (tlk_user_t *user, thread_node_t *t_node) {
     }
   }
 
-  /* Wait for user_receiver termination */
-  ret = tlk_thread_join(&receiver_thread, &exit_code);
-  PTHREAD_ERROR_HELPER(ret, "Cannot join receiver_thread thread");
+  /* Terminate user_receiver termination */
+  if (LOG) fprintf(stderr, "\n\t*** [USR] User %s exiting with %d\n\n", user -> nickname, quit);
+  terminate_receiver(user, waiting_queue);
+  tlk_thread_join(&receiver_thread, &exit_code);
 
-  /* Deallocate thread_node_t struct */
-  tlk_queue_free(t_node -> queue);
-  linked_list_remove(threads_queues, (void *) t_node);
-
-  ret = tlk_user_delete(user);
+  /* Free resources and close thread */
+  tlk_user_signout(user);
   tlk_thread_exit((tlk_exit_t) NULL);
 }
 

@@ -23,7 +23,7 @@ tlk_queue_t *tlk_queue_new (int size) {
 	ret = tlk_sem_init(&(aux -> write_mutex), 1, 1);
   if (ret) return NULL;
 
-  aux -> buffer = (tlk_message_t *) malloc(size * sizeof(tlk_message_t ));
+  aux -> buffer = (void **) malloc(size * sizeof(void *));
   aux -> buffer_length = size;
 
   aux -> read_index = 0;
@@ -36,7 +36,7 @@ tlk_queue_t *tlk_queue_new (int size) {
  * Enqueue @msg in @q, this function is thread-safe
  * Returns 0 on success, -1 on failure
  */
-int tlk_queue_enqueue (tlk_queue_t *q, const tlk_message_t *msg) {
+int tlk_queue_enqueue (tlk_queue_t *q, void **msg) {
 
   int ret = 0;
 
@@ -47,7 +47,7 @@ int tlk_queue_enqueue (tlk_queue_t *q, const tlk_message_t *msg) {
   if (ret) return ret;
 
   /* Critical Section */
-  (q -> buffer)[q -> write_index] =  *msg;
+  (q -> buffer)[q -> write_index] = *msg;
   q -> write_index = ((q -> write_index) + 1) % (q -> buffer_length);
 
   ret = tlk_sem_post(&(q -> write_mutex));
@@ -63,7 +63,7 @@ int tlk_queue_enqueue (tlk_queue_t *q, const tlk_message_t *msg) {
  * Dequeue first message in @q and put it inside @msg
  * Returns 0 on success, -1 on failure
  */
-int tlk_queue_dequeue (tlk_queue_t *q, tlk_message_t *msg) {
+int tlk_queue_dequeue (tlk_queue_t *q, void **msg) {
 
   int ret = 0;
 

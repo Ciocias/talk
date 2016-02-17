@@ -23,29 +23,6 @@ int parse_port_number (const char *input, unsigned short *output) {
 }
 
 /*
- * Close @user socket and free structure
- * Exit thread on success, TLK_SOCKET_ERROR on socket shutdown or close failure
- */
-int close_and_free_session (tlk_user_t *user) {
-  int ret = 0;
-
-  ret = tlk_socket_shutdown(user -> socket, TLK_SOCKET_RW);
-  if (ret == TLK_SOCKET_ERROR) return ret;
-
-  ret = tlk_socket_close(user -> socket);
-  if (ret == TLK_SOCKET_ERROR) return ret;
-
-  free(user -> nickname);
-  free(user -> address);
-  free(user);
-
-  tlk_thread_exit((tlk_exit_t) NULL);
-
-  /* Avoid compiler warnings */
-  return ret;
-}
-
-/*
  * Send @msg on @socket
  * Returns the number of bytes sent on success, TLK_SOCKET_ERROR on failure
  */
@@ -206,14 +183,14 @@ void send_help (tlk_socket_t socket) {
  * Send users @list through @socket as a list of nicknames
  * Returns nothing
  */
-void send_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
+void send_list (unsigned int limit, tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
 
-  int i;
+  unsigned int i;
   tlk_user_t *aux;
 
   /* Send users list, nickname per nickname */
   send_msg(socket, "Users list\n");
-  for (i = 0; i < MAX_USERS; i++) {
+  for (i = 0; i < limit; i++) {
     aux = list[i];
     if (aux != NULL) {
       send_msg(socket, aux -> nickname);
@@ -305,5 +282,5 @@ int pack_and_send_msg (int id, tlk_user_t *sender, tlk_user_t *receiver, char *m
 
   sprintf(tlk_msg -> content, msg);
 
-  return tlk_queue_enqueue(queue, tlk_msg);
+  return tlk_queue_enqueue(queue, (void **) &tlk_msg);
 }

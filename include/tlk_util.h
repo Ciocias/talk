@@ -57,7 +57,7 @@ void send_help (tlk_socket_t socket);
  * Send users @list through @socket as a list of nicknames
  * Returns nothing
  */
-void send_list (tlk_socket_t socket, tlk_user_t *list[MAX_USERS]);
+void send_list (unsigned int limit, tlk_socket_t socket, tlk_user_t *list[MAX_USERS]);
 
 /*
  * Send UNKNOWN_CMD_MSG through @socket

@@ -4,6 +4,7 @@
 #include "tlk_sockets.h"
 #include "tlk_threads.h"
 #include "tlk_semaphores.h"
+#include "tlk_msg_queue.h"
 #include "tlk_common.h"
 
 #define MAX_USERS_ERROR 1
@@ -21,6 +22,7 @@ typedef struct _tlk_user_s {
   tlk_socket_t socket;
   struct sockaddr_in *address;
   char *nickname;
+  tlk_queue_t *queue;
 } tlk_user_t;
 
 typedef struct _tlk_message_s {
@@ -31,6 +33,18 @@ typedef struct _tlk_message_s {
 } tlk_message_t;
 
 /*
+ *
+ *
+ */
+tlk_user_t *tlk_user_new (unsigned int incremental_id, tlk_socket_t client_desc, struct sockaddr_in *client_addr);
+
+/*
+ *
+ *
+ */
+int tlk_user_free (tlk_user_t *user);
+
+/*
  * Register @user into extern users_list if possible, thread-safe
  * Returns:
  *   0 on success,
@@ -38,7 +52,7 @@ typedef struct _tlk_message_s {
  *   MAX_USERS_ERROR if users count exceed the limit,
  *   NICKNAME_ERROR if nickname is already taken;
  */
-int tlk_user_register (tlk_user_t *user);
+int tlk_user_signin (tlk_user_t *user);
 
 /*
  * Delete user associated with @socket from extern users_list and deallocates memory, thread-safe
@@ -47,7 +61,7 @@ int tlk_user_register (tlk_user_t *user);
  *   -1 on semaphore errors,
  *   TLK_SOCKET_ERROR on socket errors
  */
-int tlk_user_delete (tlk_user_t *user);
+int tlk_user_signout (tlk_user_t *user);
 
 /*
  * Try to find @nickname as a registered user

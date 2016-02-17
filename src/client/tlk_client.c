@@ -23,7 +23,7 @@ tlk_socket_t initialize_client (const char *argv[]) {
   unsigned short port_number;
 
   /* Parse IP address */
-  if (LOG) printf("--> Parse IP address\n");
+  if (LOG) fprintf(stderr, "Parse IP address\n");
   ret = inet_pton(AF_INET, argv[1], (void *) &ip_addr);
 
   if (ret <= 0) {
@@ -37,7 +37,7 @@ tlk_socket_t initialize_client (const char *argv[]) {
   }
 
   /* Parse port number */
-  if (LOG) printf("--> Parse port number\n");
+  if (LOG) fprintf(stderr, "Parse port number\n");
   ret = parse_port_number(argv[2], &port_number);
 
   if (ret == -1) {
@@ -47,7 +47,7 @@ tlk_socket_t initialize_client (const char *argv[]) {
   }
 
   /* Create socket */
-  if (LOG) printf("--> Create socket\n");
+  if (LOG) fprintf(stderr, "Create socket\n");
   socket_desc = tlk_socket_create(AF_INET, SOCK_STREAM, 0);
   ERROR_HELPER(socket_desc, "Cannot create socket");
 
@@ -56,7 +56,7 @@ tlk_socket_t initialize_client (const char *argv[]) {
   endpoint_addr.sin_port = port_number;
 
   /* Connect to given IP on port */
-  if (LOG) printf("--> Connecting to server\n");
+  if (LOG) fprintf(stderr, "Connecting to server\n");
   ret = tlk_socket_connect(socket_desc, (const struct sockaddr *) &endpoint_addr, sizeof(struct sockaddr_in));
   ERROR_HELPER(ret, "Cannot connect to endpoint");
 
@@ -79,11 +79,11 @@ void join_server(tlk_socket_t *socket, const char *nickname) {
   );
 
   /* Send command to server */
-  if (LOG) printf("--> Send JOIN_COMMAND to server\n");
+  if (LOG) fprintf(stderr, "Send JOIN_COMMAND to server\n");
   ret = send_msg(*socket, join_command);
 
   if (ret == TLK_SOCKET_ERROR) {
-    if (LOG) printf("--> Error sending JOIN_COMMAND to server\n");
+    if (LOG) fprintf(stderr, "Error sending JOIN_COMMAND to server\n");
     exit(EXIT_FAILURE);
   }
 
@@ -91,41 +91,41 @@ void join_server(tlk_socket_t *socket, const char *nickname) {
   int server_res_len;
   char server_res[MSG_SIZE];
 
-  if (LOG) printf("--> Join sent, waiting for response...\n");
+  if (LOG) fprintf(stderr, "Join sent, waiting for response...\n");
   server_res_len = recv_msg(*socket, server_res, MSG_SIZE);
 
   if (server_res_len == TLK_SOCKET_ERROR)
   {
 
-    if (LOG) printf("--> Error reading from server, exiting...\n");
+    if (LOG) fprintf(stderr, "Error reading from server, exiting...\n");
     exit(EXIT_FAILURE);
 
   }
   else if (server_res_len == TLK_CONN_CLOSED)
   {
 
-    if (LOG) printf("--> Server closed the connection, exiting...\n");
+    if (LOG) fprintf(stderr, "Server closed the connection, exiting...\n");
     exit(EXIT_FAILURE);
 
   }
   else if (strncmp(server_res, JOIN_FAILED, strlen(JOIN_FAILED)) == 0)
   {
 
-    if (LOG) printf("--> Join failed, exiting...\n");
+    if (LOG) fprintf(stderr, "Join failed, exiting...\n");
     exit(EXIT_FAILURE);
 
   }
   else if (strncmp(server_res, REGISTER_FAILED, strlen(REGISTER_FAILED)) == 0)
   {
 
-    printf("--> Register failed, exiting...\n");
+    if (LOG) fprintf(stderr, "Register failed, exiting...\n");
     exit(EXIT_FAILURE);
 
   }
   else if (strncmp(server_res, JOIN_SUCCESS, strlen(JOIN_SUCCESS)) != 0)
   {
 
-    if (LOG) printf("--> Server didn't send JOIN_SUCCESS, exiting...\n");
+    if (LOG) fprintf(stderr, "Server didn't send JOIN_SUCCESS, exiting...\n");
     exit(EXIT_FAILURE);
 
   } /* Server sent JOIN_SUCCESS! we are now on-line */
@@ -140,29 +140,29 @@ void chat_session (tlk_socket_t socket, const char *nickname) {
     /* Try to join server as @nickname */
     join_server(&socket, nickname);
 
+    if (LOG) fprintf(stderr, "Launch sender & receiver threads and wait for their termination\n");
+
     /* Launch receiver thread */
-    if (LOG) printf("--> Launch receiver thread\n");
     ret = tlk_thread_create(&chat_threads[0], receiver, (tlk_thread_args *) &socket);
     GENERIC_ERROR_HELPER(ret, ret, "Cannot create receiver thread");
 
     /* Launch sender thread */
-    if (LOG) printf("--> Launch sender thread\n");
     ret = tlk_thread_create(&chat_threads[1], sender, (tlk_thread_args *) &socket);
     GENERIC_ERROR_HELPER(ret, ret, "Cannot create sender thread");
 
     /* Wait for termination */
-    if (LOG) printf("--> Wait for receiver thread termination\n");
     ret = tlk_thread_join(&chat_threads[0], &exit_code);
     GENERIC_ERROR_HELPER(ret, exit_code, "Cannot wait for receiver thread termination");
 
-    if (LOG) printf("--> Wait for sender thread termination\n");
+    fprintf(stdout, "Press Enter to exit\n");
+
     ret = tlk_thread_join(&chat_threads[1], &exit_code);
     GENERIC_ERROR_HELPER(ret, exit_code, "Cannot wait for sender thread termination");
 
     /* Clean resources */
-    if (LOG) printf("--> Close socket\n");
-    ret = tlk_socket_close(socket);
-    ERROR_HELPER(ret, "Cannot close socket");
+    if (LOG) fprintf(stderr, "Close socket\n");
+    tlk_socket_close(socket);
+    return;
   }
 
 /* Sender thread */
@@ -174,14 +174,10 @@ DWORD WINAPI sender (LPVOID arg)
 void * sender (void *arg)
 #endif /* Sender func definition */
 {
-  if (LOG) printf("\n\t*** [SND] Sender thread running\n\n");
-
+  int ret;
   tlk_socket_t *socket = (tlk_socket_t *) arg;
 
   /* Set up close comand */
-  if (LOG) printf("\n\t*** [SND] Set up close command\n\n");
-
-  int ret;
   char buf[MSG_SIZE];
   char close_command[MSG_SIZE];
 
@@ -191,45 +187,43 @@ void * sender (void *arg)
 
   while (!shouldStop)
   {
-    /* Read from stdin */
-    if (LOG) printf("\n\t*** [SND] Read from stdin\n\n");
     if (shouldStop) break;
 
+    /* Read from stdin */
     /* TODO: implement a prompt function */
     printf("--> ");
     if (fgets(buf, sizeof(buf), stdin) != (char *) buf) {
-      fprintf(stderr, ">>> Error reading from stdin, exiting... <<<\n");
-      exit(EXIT_FAILURE);
+      if (LOG) fprintf(stderr, "[SND] Error reading from stdin, exiting...\n");
+      shouldStop = -1;
+      tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
     }
 
     /* Check if endpoint has closed the connection */
-    if (LOG) printf("\n\t*** [SND] Check if endpoint has closed connection\n\n");
     if (shouldStop) break;
 
     /* Send message through socket */
-    if (LOG) printf("\n\t*** [SND] Send message through socket\n\n");
     size_t msg_len = strlen(buf);
 
     ret = send_msg(*socket, buf);
 
     if (ret == TLK_SOCKET_ERROR) {
-      if (LOG) printf("\n\t*** [SND] Error writing to socket\n\n");
+      if (LOG) fprintf(stderr, "[SND] Error writing to socket\n");
       shouldStop = -1;
+      tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
     }
 
     /* Check if message was quit command */
     if (msg_len == close_command_len && strncmp(buf, close_command, close_command_len) == 0) {
-      if (LOG) printf("\n\t*** [SND] Message was a quit command\n\n");
+      if (LOG) fprintf(stderr, "[SND] Message was a quit command\n");
       shouldStop = 1;
     }
   }
 
   /* Terminate sender thread */
-  if (LOG) printf("\n\t*** [SND] Sender thread termination\n\n");
-  tlk_thread_exit((tlk_exit_t) NULL);
+  tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
 
   /* Avoid compiler warnings */
-  return (tlk_exit_t) NULL;
+  return (tlk_exit_t) EXIT_SUCCESS;
 }
 
 /* Receiver thread */
@@ -241,13 +235,10 @@ DWORD WINAPI receiver (LPVOID arg)
 void * receiver (void *arg)
 #endif /* Receiver func definition */
 {
-  if (LOG) printf("\n\t*** [REC] Receiver thread running\n\n");
-
   int ret;
   tlk_socket_t *socket = (tlk_socket_t *) arg;
 
-  /* Set up timeout interval */
-  if (LOG) printf("\n\t*** [REC] Set up timeout interval\n\n");
+  /* Set up read file descriptors */
   fd_set read_descriptors;
   int nfds = *(socket) + 1;
 
@@ -268,7 +259,6 @@ void * receiver (void *arg)
 
     if (shouldStop) break;
 
-    if (LOG) printf("\n\t*** [REC] Select available read descriptor\n\n");
     ret = select(nfds, &read_descriptors, NULL, NULL, NULL);
 
     if (ret == TLK_SOCKET_ERROR) {
@@ -277,9 +267,9 @@ void * receiver (void *arg)
         continue;
 
       /* Endpoint has closed unexpectedly */
-      if (LOG) printf("\n\t*** [REC] Endpoint has closed unexpectedly\n\n");
+      if (LOG) fprintf(stderr, "[REC] Endpoint has closed unexpectedly\n");
       shouldStop = -1;
-      break;
+      tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
     }
 
     if (shouldStop) break;
@@ -289,35 +279,30 @@ void * receiver (void *arg)
     if (ret == TLK_SOCKET_ERROR) {
 
       /* Endpoint has closed unexpectedly */
-      if (LOG) printf("\n\t*** [REC] Endpoint has closed unexpectedly\n\n");
+      if (LOG) fprintf(stderr, "[REC] Endpoint has closed unexpectedly\n");
       shouldStop = -1;
-      break;
-
+      tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
     } else if (ret == TLK_CONN_CLOSED) {
 
       /* Endpoint has closed gracefully */
-      if (LOG) printf("\n\t*** [REC] Endpoint has gracefully closed\n\n");
       shouldStop = 1;
+      break;
 
     } else {
 
       /* TODO: Let the client know he's talking with someone */
 
       /* Show received data to user */
-      if (LOG) printf("\n\t*** [REC] Show data to user\n\n");
-      printf("[Server] %s\n", buf);
+      fprintf(stdout, "%s\n", buf);
 
     }
   }
 
-  printf("Press enter to exit client...");
-
   /* Terminate receiver thread */
-  if (LOG) printf("\n\t*** [REC] Receiver thread termination\n\n");
-  tlk_thread_exit((tlk_exit_t) NULL);
+  tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
 
   /* Avoid compiler warnings */
-  return (tlk_exit_t) NULL;
+  return (tlk_exit_t) EXIT_SUCCESS;
 }
 
 int main (int argc, const char *argv[]) {
@@ -329,14 +314,14 @@ int main (int argc, const char *argv[]) {
   }
 
   /* Initialize client data */
-  if (LOG) printf("\n-> Initialize client data\n\n");
+  if (LOG) fprintf(stderr, "Initialize client data\n");
   socket = initialize_client(argv);
 
   /* Handle chat session */
-  if (LOG) printf("\n-> Handle chat session\n\n");
+  if (LOG) fprintf(stderr, "Handle chat session\n");
   chat_session(socket, argv[3]);
 
   /* Close client */
-  if (LOG) printf("\n-> Close client\n\n");
+  if (LOG) fprintf(stderr, "Close client\n");
   exit(EXIT_SUCCESS);
 }

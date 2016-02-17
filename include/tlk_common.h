@@ -2,7 +2,7 @@
 #define TLK_COMMON_H
 
 #define DEBUG                1
-#define LOG                  0
+#define LOG                  1
 
 #define DEFAULT_IP           "127.0.0.1"
 #define DEFAULT_PORT         3000
@@ -19,7 +19,7 @@
 #define MSG_DELIMITER_CHAR   '|'
 #define COMMAND_CHAR         '/'
 
-#define HELP_CMD         	 "help"
+#define HELP_CMD         	   "help"
 #define JOIN_COMMAND         "join"
 #define LIST_COMMAND         "list"
 #define TALK_COMMAND         "talk"
@@ -42,5 +42,6 @@
 #define CLOSE_TALK_MSG       "No more talking"
 #define DIE_MSG              "die"
 #define UNKNOWN_CMD_MSG      "Unknown command, type %c%s for a list of available commands"
+#define IDLE_MSG             "You are idle"
 
 #endif /* TLK_COMMON_H */

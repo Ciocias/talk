@@ -2,7 +2,6 @@
 #define TLK_MSG_QUEUE_H
 
 #include "tlk_semaphores.h"
-#include "tlk_users.h"
 
 typedef struct _tlk_queue_s {
 
@@ -15,7 +14,7 @@ typedef struct _tlk_queue_s {
   tlk_sem_t write_mutex;
 
   unsigned int buffer_length;
-  tlk_message_t *buffer;
+  void **buffer;
 
 } tlk_queue_t;
 
@@ -29,13 +28,13 @@ tlk_queue_t *tlk_queue_new (int size);
  * Enqueue @msg in @q, this function is thread-safe
  * Returns 0 on success, -1 on failure
  */
-int tlk_queue_enqueue (tlk_queue_t *q, const tlk_message_t *msg);
+int tlk_queue_enqueue (tlk_queue_t *q, void **msg);
 
 /*
  * Dequeue first message in @q and put it inside @msg
  * Returns 0 on success, -1 on failure
  */
-int tlk_queue_dequeue (tlk_queue_t *q, tlk_message_t *msg);
+int tlk_queue_dequeue (tlk_queue_t *q, void **msg);
 
 /*
  * Destroy queue @q
