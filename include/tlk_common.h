@@ -43,5 +43,6 @@
 #define DIE_MSG              "die"
 #define UNKNOWN_CMD_MSG      "Unknown command, type %c%s for a list of available commands"
 #define IDLE_MSG             "You are idle"
+#define CLOSE_CHAT_MSG		 "Your current chat session is closed"
 
 #endif /* TLK_COMMON_H */

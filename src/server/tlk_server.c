@@ -303,7 +303,7 @@ void * user_receiver (void *arg)
 }
 
 /* TODO: commands_handler description */
-int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
+int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
 
   int ret;
   char error_msg[MSG_SIZE];
@@ -333,7 +333,8 @@ int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
     size_t talk_command_len = strlen(TALK_COMMAND) + 1;
 
     /* Send error if no nickname is specified */
-    if (msg_len <= talk_command_len + 1) {
+    if (msg_len <= talk_command_len + 1)
+    {
 
       if (LOG) printf("\n\t*** [USR] Error no nickname specified\n\n");
       snprintf(error_msg, strlen(NO_NICKNAME), NO_NICKNAME);
@@ -344,62 +345,55 @@ int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
 
     /* Try to find user with given nickname */
     user -> listener = tlk_user_find(msg + talk_command_len + 1);
-    if (user -> listener == NULL) {
+    if (user -> listener == NULL)
+    {
       if (LOG) printf("\n\t*** [USR] Unable to start new talk session \n\n");
 
       snprintf(error_msg, strlen(USER_NOT_FOUND) + 1, USER_NOT_FOUND);
 
       ret = send_msg(user -> socket, error_msg);
-      if (ret == TLK_SOCKET_ERROR) {
+      if (ret == TLK_SOCKET_ERROR)
+      {
         if (LOG) printf("\n\t*** [USR] Cannot send error_msg to user %s\n\n", user -> nickname);
 
-        terminate_receiver(user, queue);
+        terminate_receiver(user, waiting_queue);
         return -1;
       }
-
     }
 
     /* Try to start a talking session with the given nickname */
-    ret = talk_session(user, queue);
-    if (ret < 0) {
+    ret = talk_session(user, waiting_queue);
+    if (ret < 0)
+    {
       if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
 
-      terminate_receiver(user, queue);
+      terminate_receiver(user, waiting_queue);
       return -1;
     }
   }
-  else if (strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0)
+  else if(strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0 ||
+          strncmp(msg + 1, CLOSE_COMMAND, strlen(CLOSE_COMMAND)) == 0)
   {
-
-    if (LOG) printf("\n\t*** [USR] User asked to quit\n\n");
-    if (user -> status == TALKING) return 0;
-
-    terminate_receiver(user, queue);
-    return -1;
-  }
-  else if(strncmp(msg + 1, CLOSE_COMMAND, strlen(CLOSE_COMMAND)) == 0)
-  {
+    if (LOG) printf("\n\t*** [USR] User asked to close or quit\n\n");
     if (user -> status == TALKING)
     {
-
       /*Set both users to IDLE*/
       user -> status = IDLE;
       (user -> listener) -> status = IDLE;
 
-      /* Notify the listener that we're closing connection */
-      ret = pack_and_send_msg(
-        (user -> listener) -> id,
-        user,
-        user -> listener,
-        (char *) CLOSE_TALK_MSG,
-        waiting_queue
-      );
-      if (ret) {
-        if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
-
-        terminate_receiver(user, queue);
-        return -1;
-      }
+      /* Send message through server queue system */
+        ret = pack_and_send_msg(
+          (user -> listener) -> id,
+          user,
+          user -> listener,
+          CLOSE_CHAT_MSG,
+          waiting_queue
+          );
+        if (ret)
+        {
+           if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
+           return -1;
+        }
 
       /* Unset both listeners */
       (user -> listener) -> listener = NULL;
@@ -407,16 +401,29 @@ int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
     }
     else
     {
-      sprintf(error_msg, IDLE_MSG);
-
-      ret = send_msg(user -> socket, error_msg);
-      if (ret == TLK_SOCKET_ERROR) {
-        if (LOG) printf("\n\t*** [USR] Cannot send message to user: exiting...\n\n");
-
-        terminate_receiver(user, queue);
-        return -1;
+      if (strncmp(msg + 1, CLOSE_COMMAND, strlen(CLOSE_COMMAND)) == 0)
+      {
+        /* Send message through server queue system */
+        ret = pack_and_send_msg(
+          user -> id,
+          user,
+          user,
+          IDLE_MSG,
+          waiting_queue
+          );
+        if (ret)
+        {
+           if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
+           return -1;
+        }
       }
     } /* (user -> status == TALKING) */
+    
+    if (strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0)
+        {
+          terminate_receiver(user, waiting_queue);
+            return -1;      
+        }
   }
   else
   {
@@ -426,13 +433,52 @@ int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
     if (ret == TLK_SOCKET_ERROR) {
       if (LOG) printf("\n\t*** [USR] Cannot send error_msg to user %s\n\n", user -> nickname);
 
-      terminate_receiver(user, queue);
+      terminate_receiver(user, waiting_queue);
       return -1;
     }
 
   } /* Unknown command */
 
   return 0;
+}
+
+int message_handler(tlk_user_t *user, char msg[MSG_SIZE]){
+  /* Handle server commands */
+  int ret;
+  if (msg[0] == COMMAND_CHAR)
+  {
+    if (LOG) printf("\n\t*** [USR] Handle server commands\n\n");
+    return commands_handler(user, msg);
+  }
+  else
+  {
+    /* Send message to listener if status is TALKING */
+    if (user -> status == TALKING)
+    {
+      if ((user -> listener) != NULL)
+      {
+        /* Send message through server queue system */
+        ret = pack_and_send_msg(
+          (user -> listener) -> id,
+          user,
+          user -> listener,
+          msg,
+          waiting_queue
+          );
+        if (ret)
+        {
+           if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
+           return -1;
+        }
+      }
+      else
+      {
+        user -> status = IDLE;
+        user -> listener = NULL;
+      } /* (listener != NULL) */
+      return 0;
+    } /* (user -> status == TALKING) */
+  } /* (msg[0] == COMMAND_CHAR) */
 }
 
 /* Chat session handler */
@@ -460,44 +506,10 @@ void user_chat_session (tlk_user_t *user) {
 
     if (len > 0)
     {
-
-      /* Handle server commands */
-      if (msg[0] == COMMAND_CHAR)
-      {
-
-        if (LOG) printf("\n\t*** [USR] Handle server commands\n\n");
-        quit = commands_handler(user, waiting_queue, msg);
-      }
-      else
-      {
-
-        /* Send message to listener if status is TALKING */
-        if (user -> status == TALKING) {
-          if ((user -> listener) != NULL) {
-
-            /* Send message through server queue system */
-            ret = pack_and_send_msg(
-              (user -> listener) -> id,
-              user,
-              user -> listener,
-              msg,
-              waiting_queue
-            );
-            if (ret) {
-              if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
-              quit = -1;
-              break;
-            }
-          } else {
-            user -> status = IDLE;
-            user -> listener = NULL;
-          } /* (listener != NULL) */
-        } /* (user -> status == TALKING) */
-      } /* (msg[0] == COMMAND_CHAR) */
+      quit = message_handler(user, msg);
     }
     else if (len < 0)
     {
-
       /* Client connection unexpectedly closed */
       if (LOG) printf("\n\t*** [USR] Client connection unexpectedly closed\n\n");
       quit = -1;
