@@ -6,9 +6,10 @@ int shouldStop = 0;
 
 /*
  * Print client usage to standard error
+ * Returns nothing
  */
 void usage_error_client (const char *prog_name) {
-  fprintf(stderr, "Usage: %s <IP_address> <port_number> <nickname>\n", prog_name);
+  fprintf(stdout, "Usage: %s <IP_address> <port_number> <nickname>\n", prog_name);
   exit(EXIT_FAILURE);
 }
 
@@ -134,36 +135,46 @@ void join_server(tlk_socket_t *socket, const char *nickname) {
 /* Handle chat session */
 void chat_session (tlk_socket_t socket, const char *nickname) {
 
-    int ret, exit_code;
-    tlk_thread_t chat_threads[2];
+  int ret;
+  int exit_code;
+  tlk_thread_t chat_threads[2];
 
-    /* Try to join server as @nickname */
-    join_server(&socket, nickname);
+  /* Try to join server as @nickname */
+  join_server(&socket, nickname);
 
-    if (LOG) fprintf(stderr, "Launch sender & receiver threads and wait for their termination\n");
-
-    /* Launch receiver thread */
-    ret = tlk_thread_create(&chat_threads[0], receiver, (tlk_thread_args *) &socket);
-    GENERIC_ERROR_HELPER(ret, ret, "Cannot create receiver thread");
-
-    /* Launch sender thread */
-    ret = tlk_thread_create(&chat_threads[1], sender, (tlk_thread_args *) &socket);
-    GENERIC_ERROR_HELPER(ret, ret, "Cannot create sender thread");
-
-    /* Wait for termination */
-    ret = tlk_thread_join(&chat_threads[0], &exit_code);
-    GENERIC_ERROR_HELPER(ret, exit_code, "Cannot wait for receiver thread termination");
-
-    fprintf(stdout, "Press Enter to exit\n");
-
-    ret = tlk_thread_join(&chat_threads[1], &exit_code);
-    GENERIC_ERROR_HELPER(ret, exit_code, "Cannot wait for sender thread termination");
-
-    /* Clean resources */
-    if (LOG) fprintf(stderr, "Close socket\n");
-    tlk_socket_close(socket);
-    return;
+  /* Launch receiver thread */
+  ret = tlk_thread_create(&chat_threads[0], receiver, (tlk_thread_args *) &socket);
+  if (ret) {
+    if (LOG) fprintf(stderr, "Cannot create receiver thread\n");
+    exit(EXIT_FAILURE);
   }
+
+  /* Launch sender thread */
+  ret = tlk_thread_create(&chat_threads[1], sender, (tlk_thread_args *) &socket);
+  if (ret) {
+    if (LOG) fprintf(stderr, "Cannot create sender thread\n");
+    exit(EXIT_FAILURE);
+  }
+
+  /* Wait for termination */
+  ret = tlk_thread_join(&chat_threads[0], (void **) &exit_code);
+  if (ret) {
+    if (LOG) fprintf(stderr, "Cannot wait for receiver thread termination\n");
+    exit(EXIT_FAILURE);
+  }
+
+  fprintf(stdout, "Press Enter to exit\n");
+
+  ret = tlk_thread_join(&chat_threads[1], (void **) &exit_code);
+  if (ret) {
+    if (LOG) fprintf(stderr, "Cannot wait for sender thread termination\n");
+    exit(EXIT_FAILURE);
+  }
+
+  /* Clean resources */
+  tlk_socket_close(socket);
+  return;
+}
 
 /* Sender thread */
 #if defined(_WIN32) && _WIN32

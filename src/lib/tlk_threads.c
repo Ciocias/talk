@@ -1,21 +1,22 @@
 #include "../../include/tlk_threads.h"
 
 /*
- * Creates new thread and makes @thread point to it, passing @thread_routine and @t_args to the functions beneath
- * Returns 0 on success, propagates errors on fail
+ * Creates a new thread
+ * Returns 0 on success, -1 on failure
  */
 int tlk_thread_create(tlk_thread_t *thread, tlk_thread_func thread_routine, tlk_thread_args t_args) {
-  int ret;
+  int ret = 0;
 
 #if defined(_WIN32) && _WIN32
 
   *thread = CreateThread(NULL, 0, thread_routine, t_args, 0, NULL);
 
-  ret = (*thread != NULL ? 0:1);
+  ret = (*thread != NULL ? 0 : -1);
 
 #elif defined(__linux__) && __linux__
 
   ret = pthread_create(thread, NULL, thread_routine, t_args);
+  if (ret) return -1;
 
 #endif
 
@@ -24,19 +25,20 @@ int tlk_thread_create(tlk_thread_t *thread, tlk_thread_func thread_routine, tlk_
 
 /*
  * Detaches @thread from the current process
- * Returns 0 on success, propagates errors on fail
+ * Returns 0 on success, -1 on failure
  */
 int tlk_thread_detach(tlk_thread_t *thread) {
 
-  int ret;
+  int ret = 0;
 
 #if defined(_WIN32) && _WIN32
 
-  ret = (CloseHandle(*thread) != FALSE ? 0:1);
+  ret = (CloseHandle(*thread) != 0 ? 0 : -1);
 
 #elif defined(__linux__) && __linux__
 
   ret = pthread_detach(*thread);
+  if (ret) return -1;
 
 #endif
 
@@ -44,27 +46,24 @@ int tlk_thread_detach(tlk_thread_t *thread) {
 }
 
 /*
- * Perform a join operation on @thread and puts exit value in @exit_code, if any
- * Returns 0 on success, propagates errors on fail
+ * Wait for @thread termination
+ * Returns 0 on success, -1 on failure
  */
-int tlk_thread_join(tlk_thread_t *thread, void *exit_code) {
+int tlk_thread_join(tlk_thread_t *thread, void **exit_code) {
 
-  int ret;
+  int ret = 0;
 
 #if defined(_WIN32) && _WIN32
 
-  ret = (WaitForSingleObject(*thread, INFINITE) != WAIT_FAILED ? 0:1);
-	printf("ret is %d\n", ret);
-  if (ret) {
-    return ret;
-  } else {
-		ret = (GetExitCodeThread(*thread, &exit_code) != FALSE ? 0:1);
-		printf("exitcode ok? %d\n", ret);
-  }
+  ret = (WaitForSingleObject(*thread, INFINITE) != WAIT_FAILED ? 0 : -1);
+  if (ret) return ret;
+  
+  ret = (GetExitCodeThread(*thread, (LPDWORD) *exit_code) != 0 ? 0 : -1);
 
 #elif defined(__linux__) && __linux__
 
-  ret = pthread_join(*thread, &exit_code);
+  ret = pthread_join(*thread, exit_code);
+  if (ret) return -1;
 
 #endif
 
@@ -86,4 +85,5 @@ void tlk_thread_exit(tlk_exit_t exit_code) {
 
 #endif
 
+  return;
 }

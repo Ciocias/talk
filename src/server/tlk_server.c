@@ -10,14 +10,12 @@ tlk_user_t *users_list[MAX_USERS];
 /* Input queue for broker thread */
 tlk_queue_t *waiting_queue          = NULL;
 
-/* Linked list of threads queues */
-linked_list *threads_queues         = NULL;
-
 /*
  * Print server usage to standard error
+ * Returns nothing
  */
 void usage_error_server (const char *prog_name) {
-  fprintf(stderr, "Usage: %s <port_number>\n", prog_name);
+  fprintf(stdout, "Usage: %s <port_number>\n", prog_name);
   exit(EXIT_FAILURE);
 }
 
@@ -27,39 +25,26 @@ unsigned short initialize_server (const char *argv[]) {
   int ret;
   unsigned short port = 0;
 
-  if (LOG) printf("--> Parse port number\n");
   ret = parse_port_number(argv[1], &port);
-
   if (ret == -1) {
     fprintf(stderr, "Port not valid: must be between 1024 and 49151\n");
-
     exit(EXIT_FAILURE);
   }
 
   /* Initialize user data semaphore */
-  if (LOG) printf("--> Initialize user data semaphore\n");
   ret = tlk_sem_init(&users_mutex, 1, 1);
-  ERROR_HELPER(ret, "Cannot create users_mutex semaphore");
-
-  /* Initialize global current_users */
-  if (LOG) printf("--> Initialize global current_users\n");
-  current_users = 0;
-
-  /* Initialize global waiting_queue */
-  if (LOG) printf("--> Initialize global waiting_queue\n");
-  waiting_queue = tlk_queue_new(QUEUE_SIZE);
-
-  if (waiting_queue == NULL) {
-    fprintf(stderr, "Cannot create waiting queue with size %d\n", QUEUE_SIZE);
+  if (ret) {
+    if (LOG) fprintf(stderr, "Cannot initialize users_mutex semaphore\n");
     exit(EXIT_FAILURE);
   }
 
-  /* Initialize global threads_queues */
-  if (LOG) printf("--> Initialize global thread_queues\n");
-  threads_queues = linked_list_new();
+  /* Initialize global current_users */
+  current_users = 0;
 
-  if (threads_queues == NULL) {
-    fprintf(stderr, "Cannot create waiting queue with size %d\n", QUEUE_SIZE);
+  /* Initialize global waiting_queue */
+  waiting_queue = tlk_queue_new(QUEUE_SIZE);
+  if (waiting_queue == NULL) {
+    if (LOG) fprintf(stderr, "Cannot create new waiting_queue with size %d\n", QUEUE_SIZE);
     exit(EXIT_FAILURE);
   }
 
@@ -73,7 +58,6 @@ void server_main_loop (unsigned short port_number) {
   tlk_socket_t server_desc, client_desc;
 
   /* Set up socket and other connection data */
-  if (LOG) printf("--> Set up socket and address data\n");
   struct sockaddr_in server_addr = { 0 };
   int sockaddr_len = sizeof(struct sockaddr_in);
 
@@ -86,60 +70,67 @@ void server_main_loop (unsigned short port_number) {
 
   int reuseaddr_opt = 1;
 
-  if (LOG) printf("--> Set SO_REUSEADDR option\n");
+  if (LOG) fprintf(stderr, "Set SO_REUSEADDR option\n");
   ret = setsockopt(server_desc, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_opt, sizeof(reuseaddr_opt));
   ERROR_HELPER(ret, "Cannot set option SO_REUSEADDR");
 
-  if (LOG) printf("--> Bind on socket\n");
+  if (LOG) fprintf(stderr, "Bind on socket\n");
   ret = tlk_socket_bind(server_desc, (struct sockaddr *) &server_addr, sockaddr_len);
   ERROR_HELPER(ret, "Cannot bind on socket");
 
-  if (LOG) printf("--> Listen on socket\n");
+  if (LOG) fprintf(stderr, "Listen on socket\n");
   ret = tlk_socket_listen(server_desc, MAX_CONN_QUEUE);
   ERROR_HELPER(ret, "Cannot listen on socket");
 
   struct sockaddr_in *client_addr = (struct sockaddr_in *) calloc(1, sizeof(struct sockaddr_in));
 
   /* Wait for incoming connections */
-  if (LOG) printf("--> Enter 'wait for incoming connections' loop\n");
+  if (LOG) printf("Enter 'wait for incoming connections' loop\n");
   while (1)
   {
     client_desc = tlk_socket_accept(server_desc, (struct sockaddr *) client_addr, sockaddr_len);
 
-    if (LOG) printf("--> Someone connected\n");
+    if (LOG) fprintf(stderr, "Someone connected\n");
 
     if (client_desc == -1 && errno == TLK_EINTR) continue;
     ERROR_HELPER(client_desc, "Cannot accept on socket");
 
     /* Create new user */
-    if (LOG) printf("--> Create new user\n");
+    if (LOG) fprintf(stderr, "Create new user\n");
     tlk_user_t *new_user;
 
     ret = tlk_sem_wait(&users_mutex);
-    ERROR_HELPER(ret, "Cannot wait on users_mutex semaphore");
+    if (ret) {
+      if (LOG) fprintf(stderr, "Cannot wait on users_mutex semaphore\n");
+      exit(EXIT_FAILURE);
+    }
 
     new_user = tlk_user_new(incremental_id, client_desc, client_addr);
     if (new_user == NULL) {
-      fprintf(stderr, "Cannot create new user");
+       if (LOG) fprintf(stderr, "Cannot create new user");
       exit(EXIT_FAILURE);
     }
 
     incremental_id += 1;
 
     ret = tlk_sem_post(&users_mutex);
-    ERROR_HELPER(ret, "Cannot post on users_mutex semaphore");
+    if (ret) {
+      if (LOG) fprintf(stderr, "Cannot post on users_mutex semaphore\n");
+      exit(EXIT_FAILURE);
+    }
 
     /* Launch user handler thread */
-    if (LOG) printf("--> Launch user handler thread\n");
+    if (LOG) fprintf(stderr, "Launch user handler thread\n");
     tlk_thread_t user_thread;
 
     ret = tlk_thread_create(&user_thread, (tlk_thread_func) user_handler, (tlk_thread_args) new_user);
-    PTHREAD_ERROR_HELPER(ret, "Cannot create thread");
+    if (ret) 
+    {
+      if (LOG) fprintf(stderr, "Error creating a new user thread\n");
+      send_msg(client_desc, "Error creating a new user thread\n");
+    }
 
-    ret = tlk_thread_detach(&user_thread);
-    PTHREAD_ERROR_HELPER(ret, "Cannot detach newly created thread");
-
-    if (LOG) printf("--> Thread created, allocate new space for next client\n");
+    /* Allocate new space for next user */
     client_addr = (struct sockaddr_in *) calloc(1, sizeof(struct sockaddr_in));
   }
 }
@@ -282,20 +273,20 @@ void * user_receiver (void *arg)
     if (LOG) printf("\n\t*** [QCR] Check own thread queue\n\n");
     ret = tlk_queue_dequeue(user -> queue, (void **) &tlk_msg);
     if (ret) {
-      if (LOG) printf("\n\t*** [QCR] Dequeuing error, exiting...\n\n");
+      if (LOG) printf("\n\t*** [QCR] Dequeuing error\n\n\n");
       tlk_thread_exit((tlk_exit_t) NULL);
     }
 
     if (tlk_msg != NULL) {
       if (strncmp(tlk_msg -> content, DIE_MSG, strlen(DIE_MSG)) == 0) {
-				printf("\n\t*** [QCR] Die message received, exiting...\n\n");
+				printf("\n\t*** [QCR] Die message received\n\n\n");
 				tlk_thread_exit((tlk_exit_t) NULL);
       }
 
       /* Not a command: send it to our user */
       ret = send_msg(user -> socket, tlk_msg -> content);
       if (ret == TLK_SOCKET_ERROR) {
-        if (LOG) printf("\n\t*** [QCR] Cannot send message to user: exiting...\n\n");
+        if (LOG) printf("\n\t*** [QCR] Cannot send message to user\n\n\n");
         tlk_thread_exit((tlk_exit_t) NULL);
       }
     }
@@ -362,7 +353,7 @@ int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
     /* Try to start a talking session with the given nickname */
     ret = talk_session(user, queue);
     if (ret < 0) {
-      if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
+      if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue\n\n\n");
 
       terminate_receiver(user, queue);
       return -1;
@@ -395,7 +386,7 @@ int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
         waiting_queue
       );
       if (ret) {
-        if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
+        if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue\n\n\n");
 
         terminate_receiver(user, queue);
         return -1;
@@ -411,7 +402,7 @@ int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
 
       ret = send_msg(user -> socket, error_msg);
       if (ret == TLK_SOCKET_ERROR) {
-        if (LOG) printf("\n\t*** [USR] Cannot send message to user: exiting...\n\n");
+        if (LOG) printf("\n\t*** [USR] Cannot send message to user\n\n\n");
 
         terminate_receiver(user, queue);
         return -1;
@@ -444,11 +435,11 @@ void user_chat_session (tlk_user_t *user) {
 
   /* Launch user_receiver thread */
   tlk_thread_t receiver_thread;
-  if (LOG) printf("\n-> Launch %s queue-checking routine thread\n\n", user->nickname);
+  if (LOG) fprintf(stderr, "Launch %s queue-checking routine thread\n\n", user->nickname);
 
 	ret = tlk_thread_create(&receiver_thread, (tlk_thread_func) user_receiver, (tlk_thread_args) user);
 	if (ret) {
-    if (LOG) fprintf(stderr, "\n\t*** [USR] Cannot create thread 'user_receiver', exiting...\n\n");
+    if (LOG) fprintf(stderr, "\n\t*** [USR] Cannot create thread 'user_receiver'\n\n\n");
     tlk_user_signout(user);
     tlk_thread_exit((tlk_exit_t) NULL);
   }
@@ -484,7 +475,7 @@ void user_chat_session (tlk_user_t *user) {
               waiting_queue
             );
             if (ret) {
-              if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue, exiting...\n\n");
+              if (LOG) printf("\n\t*** [USR] Error enqueuing in waiting queue\n\n\n");
               quit = -1;
               break;
             }
@@ -533,7 +524,7 @@ void user_chat_session (tlk_user_t *user) {
   /* Terminate user_receiver termination */
   if (LOG) fprintf(stderr, "\n\t*** [USR] User %s exiting with %d\n\n", user -> nickname, quit);
   terminate_receiver(user, waiting_queue);
-  tlk_thread_join(&receiver_thread, &exit_code);
+  tlk_thread_join(&receiver_thread, (void **) &exit_code);
 
   /* Free resources and close thread */
   tlk_user_signout(user);
@@ -543,29 +534,27 @@ void user_chat_session (tlk_user_t *user) {
 int main (int argc, const char *argv[]) {
 
   int ret;
-
-  /* Initialize server data */
-  if (LOG) printf("\n-> Initialize server data\n\n");
   if (argc != 2) {
     usage_error_server(argv[0]);
   }
+
+  /* Initialize server data */
   unsigned short port = initialize_server(argv);
 
   /* Launch broker thread */
-  if (LOG) printf("\n-> Launch broker thread\n\n");
   tlk_thread_t broker_thread;
 
   ret = tlk_thread_create(&broker_thread, (tlk_thread_func) broker_routine,  NULL);
-  PTHREAD_ERROR_HELPER(ret, "Cannot create thread");
-
-  ret = tlk_thread_detach(&broker_thread);
-  PTHREAD_ERROR_HELPER(ret, "Cannot detach newly created thread");
+  if (ret) {
+    if (LOG) fprintf(stderr, "Cannot create new broker_thread\n");
+    exit(EXIT_FAILURE);
+  }
 
   /* Listen for incoming connections */
-  if (LOG) printf("\n-> Listen for incoming Connections\n\n");
+  if (LOG) fprintf(stderr, "Listen for incoming Connections\n\n");
   server_main_loop(port);
 
   /* Close Program */
-  if (LOG) printf("\n-> Close program\n\n");
+  if (LOG) fprintf(stderr, "Close program\n\n");
   exit(EXIT_SUCCESS);
 }
