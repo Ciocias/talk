@@ -3,7 +3,6 @@
 - [ ] Write proper docs and readme
   + [ ] Project description
   + [ ] Update building instructions for Windows
-  + [ ] Test build docs
 - [ ] Review libraries code
   + [x] msg_queue
   + [x] semaphores
@@ -11,24 +10,22 @@
   + [ ] threads
   + [x] users
   + [ ] util
-- [ ] Fix tlk_threads on Windows
-- [ ] Successful Windows build
-- [ ] Successful GNU/Linux build
-
-## Milestone 0.1
-- [x] Basic server commands
-- [x] Talk command implementation
 - [x] Correct quit handling for client
 - [ ] Correct quit handling for server
-- [ ] Write proper docs and readme
+- [ ] Fix tlk_threads on Windows
+
+### Milestone 0.1
+- [x] All basic server commands implemented
+  + [x] help
+  + [x] list
+  + [x] talk
+  + [x] close
+  + [x] quit
 - [ ] Review libraries code
 - [ ] Review server code
 - [ ] Review client code
-- [ ] Fix tlk_threads on Windows
-- [ ] Successful Windows build
-- [ ] Successful GNU/Linux build
-- [ ] Code factoring
+- [ ] Write proper docs and readme
+- [ ] Signal handling (UNIX)
 
-## Milestone 0.2
-- [ ] Signal handling
-  + [ ] SIGINT to clean exit (WSACleanup on windows)
+### Milestone 0.2
+- [ ] More to come...

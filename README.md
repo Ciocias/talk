@@ -1,8 +1,6 @@
 # Talk!
 
-TODO: Write a project description
-
-Cross-platform server/client chat service
+Cross-platform server/client chat service written in C
 
 Testing is done on:
   + Fedora 23
