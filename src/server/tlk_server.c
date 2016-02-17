@@ -116,7 +116,7 @@ void server_main_loop (unsigned short port_number) {
     tlk_thread_t user_thread;
 
     ret = tlk_thread_create(&user_thread, (tlk_thread_func) user_handler, (tlk_thread_args) new_user);
-    if (ret) 
+    if (ret)
     {
       if (LOG) fprintf(stderr, "Error creating a new user thread\n");
       send_msg(client_desc, "Error creating a new user thread\n");
@@ -276,7 +276,7 @@ void * user_receiver (void *arg)
 }
 
 /* TODO: commands_handler description */
-int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
+int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
 
   int ret;
   char error_msg[MSG_SIZE];
@@ -302,7 +302,8 @@ int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
     size_t talk_command_len = strlen(TALK_COMMAND) + 1;
 
     /* Send error if no nickname is specified */
-    if (msg_len <= talk_command_len + 1) {
+    if (msg_len <= talk_command_len + 1)
+    {
 
       if (LOG) fprintf(stderr, "[USR] Error no nickname specified\n");
       snprintf(error_msg, strlen(NO_NICKNAME), NO_NICKNAME);
@@ -322,34 +323,25 @@ int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
       if (ret == TLK_SOCKET_ERROR) {
         if (LOG) fprintf(stderr, "[USR] Cannot send error_msg to user %s\n", user -> nickname);
 
-        terminate_receiver(user, queue);
+        terminate_receiver(user, waiting_queue);
         return -1;
       }
-
     }
 
     /* Try to start a talking session with the given nickname */
-    ret = talk_session(user, queue);
+    ret = talk_session(user, waiting_queue);
     if (ret < 0) {
       if (LOG) fprintf(stderr, "[USR] Error enqueuing in waiting queue\n");
 
-      terminate_receiver(user, queue);
+      terminate_receiver(user, waiting_queue);
       return -1;
     }
   }
-  else if (strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0)
-  {
-
-    if (user -> status == TALKING) return 0;
-
-    terminate_receiver(user, queue);
-    return -1;
-  }
-  else if(strncmp(msg + 1, CLOSE_COMMAND, strlen(CLOSE_COMMAND)) == 0)
+  else if(strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0 ||
+          strncmp(msg + 1, CLOSE_COMMAND, strlen(CLOSE_COMMAND)) == 0)
   {
     if (user -> status == TALKING)
     {
-
       /*Set both users to IDLE*/
       user -> status = IDLE;
       (user -> listener) -> status = IDLE;
@@ -359,13 +351,14 @@ int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
         (user -> listener) -> id,
         user,
         user -> listener,
-        (char *) CLOSE_TALK_MSG,
+        (char *) CLOSE_CHAT_MSG,
         waiting_queue
       );
-      if (ret) {
+      if (ret)
+      {
         if (LOG) fprintf(stderr, "[USR] Error enqueuing in waiting queue\n");
 
-        terminate_receiver(user, queue);
+        terminate_receiver(user, waiting_queue);
         return -1;
       }
 
@@ -375,16 +368,30 @@ int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
     }
     else
     {
-      sprintf(error_msg, IDLE_MSG);
+      if (strncmp(msg + 1, CLOSE_COMMAND, strlen(CLOSE_COMMAND)) == 0)
+      {
+        ret = pack_and_send_msg(
+          user -> id,
+          user,
+          user,
+          (char *) IDLE_MSG,
+          waiting_queue
+        );
+        if (ret)
+        {
+          if (LOG) fprintf(stderr, "[USR] Cannot send message to user\n");
 
-      ret = send_msg(user -> socket, error_msg);
-      if (ret == TLK_SOCKET_ERROR) {
-        if (LOG) fprintf(stderr, "[USR] Cannot send message to user\n");
-
-        terminate_receiver(user, queue);
-        return -1;
+          terminate_receiver(user, waiting_queue);
+          return -1;
+        }
       }
     } /* (user -> status == TALKING) */
+
+    if (strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0)
+        {
+          terminate_receiver(user, waiting_queue);
+          return 1;
+        }
   }
   else
   {
@@ -393,12 +400,51 @@ int commands_handler(tlk_user_t *user, tlk_queue_t *queue, char msg[MSG_SIZE]) {
     if (ret == TLK_SOCKET_ERROR) {
       if (LOG) fprintf(stderr, "[USR] Cannot send error_msg to user %s\n", user -> nickname);
 
-      terminate_receiver(user, queue);
+      terminate_receiver(user, waiting_queue);
       return -1;
     }
 
   } /* Unknown command */
 
+  return 0;
+}
+
+int message_handler(tlk_user_t *user, char msg[MSG_SIZE]){
+  int ret;
+
+  if (msg[0] == COMMAND_CHAR)
+  {
+    return commands_handler(user, msg);
+  }
+  else
+  {
+    /* Send message to listener if status is TALKING */
+    if (user -> status == TALKING)
+    {
+      if ((user -> listener) != NULL)
+      {
+        /* Send message through server queue system */
+        ret = pack_and_send_msg(
+          (user -> listener) -> id,
+          user,
+          user -> listener,
+          msg,
+          waiting_queue
+        );
+        if (ret)
+        {
+           if (LOG) fprintf(stderr, "[USR] Error enqueuing in waiting queue\n");
+           return -1;
+        }
+      }
+      else
+      {
+        user -> status = IDLE;
+        user -> listener = NULL;
+      } /* (listener != NULL) */
+      return 0;
+    } /* (user -> status == TALKING) */
+  } /* (msg[0] == COMMAND_CHAR) */
   return 0;
 }
 
@@ -425,43 +471,10 @@ void user_chat_session (tlk_user_t *user) {
 
     if (len > 0)
     {
-
-      /* Handle server commands */
-      if (msg[0] == COMMAND_CHAR)
-      {
-
-        quit = commands_handler(user, waiting_queue, msg);
-      }
-      else
-      {
-
-        /* Send message to listener if status is TALKING */
-        if (user -> status == TALKING) {
-          if ((user -> listener) != NULL) {
-
-            /* Send message through server queue system */
-            ret = pack_and_send_msg(
-              (user -> listener) -> id,
-              user,
-              user -> listener,
-              msg,
-              waiting_queue
-            );
-            if (ret) {
-              if (LOG) fprintf(stderr, "[USR] Error enqueuing in waiting queue\n");
-              quit = -1;
-              break;
-            }
-          } else {
-            user -> status = IDLE;
-            user -> listener = NULL;
-          } /* (listener != NULL) */
-        } /* (user -> status == TALKING) */
-      } /* (msg[0] == COMMAND_CHAR) */
+        quit = message_handler(user, msg);
     }
     else if (len < 0)
     {
-
       /* Client connection unexpectedly closed */
       if (LOG) fprintf(stderr, "[USR] Client connection unexpectedly closed\n");
       quit = -1;
@@ -495,7 +508,7 @@ void user_chat_session (tlk_user_t *user) {
 
   /* Free resources and close thread */
   tlk_user_signout(user);
-  tlk_thread_exit((tlk_exit_t) NULL);
+  tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
 }
 
 int main (int argc, const char *argv[]) {
