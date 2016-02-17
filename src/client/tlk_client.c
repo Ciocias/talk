@@ -24,7 +24,6 @@ tlk_socket_t initialize_client (const char *argv[]) {
   unsigned short port_number;
 
   /* Parse IP address */
-  if (LOG) fprintf(stderr, "Parse IP address\n");
   ret = inet_pton(AF_INET, argv[1], (void *) &ip_addr);
 
   if (ret <= 0) {
@@ -38,7 +37,6 @@ tlk_socket_t initialize_client (const char *argv[]) {
   }
 
   /* Parse port number */
-  if (LOG) fprintf(stderr, "Parse port number\n");
   ret = parse_port_number(argv[2], &port_number);
 
   if (ret == -1) {
@@ -48,7 +46,6 @@ tlk_socket_t initialize_client (const char *argv[]) {
   }
 
   /* Create socket */
-  if (LOG) fprintf(stderr, "Create socket\n");
   socket_desc = tlk_socket_create(AF_INET, SOCK_STREAM, 0);
   ERROR_HELPER(socket_desc, "Cannot create socket");
 
@@ -57,7 +54,6 @@ tlk_socket_t initialize_client (const char *argv[]) {
   endpoint_addr.sin_port = port_number;
 
   /* Connect to given IP on port */
-  if (LOG) fprintf(stderr, "Connecting to server\n");
   ret = tlk_socket_connect(socket_desc, (const struct sockaddr *) &endpoint_addr, sizeof(struct sockaddr_in));
   ERROR_HELPER(ret, "Cannot connect to endpoint");
 
@@ -80,7 +76,6 @@ void join_server(tlk_socket_t *socket, const char *nickname) {
   );
 
   /* Send command to server */
-  if (LOG) fprintf(stderr, "Send JOIN_COMMAND to server\n");
   ret = send_msg(*socket, join_command);
 
   if (ret == TLK_SOCKET_ERROR) {
@@ -92,41 +87,40 @@ void join_server(tlk_socket_t *socket, const char *nickname) {
   int server_res_len;
   char server_res[MSG_SIZE];
 
-  if (LOG) fprintf(stderr, "Join sent, waiting for response...\n");
   server_res_len = recv_msg(*socket, server_res, MSG_SIZE);
 
   if (server_res_len == TLK_SOCKET_ERROR)
   {
 
-    if (LOG) fprintf(stderr, "Error reading from server, exiting...\n");
+    if (LOG) fprintf(stderr, "Error reading from server socket\n");
     exit(EXIT_FAILURE);
 
   }
   else if (server_res_len == TLK_CONN_CLOSED)
   {
 
-    if (LOG) fprintf(stderr, "Server closed the connection, exiting...\n");
+    if (LOG) fprintf(stderr, "Server closed the connection\n");
     exit(EXIT_FAILURE);
 
   }
   else if (strncmp(server_res, JOIN_FAILED, strlen(JOIN_FAILED)) == 0)
   {
 
-    if (LOG) fprintf(stderr, "Join failed, exiting...\n");
+    if (LOG) fprintf(stderr, "Join failed\n");
     exit(EXIT_FAILURE);
 
   }
   else if (strncmp(server_res, REGISTER_FAILED, strlen(REGISTER_FAILED)) == 0)
   {
 
-    if (LOG) fprintf(stderr, "Register failed, exiting...\n");
+    if (LOG) fprintf(stderr, "Register failed\n");
     exit(EXIT_FAILURE);
 
   }
   else if (strncmp(server_res, JOIN_SUCCESS, strlen(JOIN_SUCCESS)) != 0)
   {
 
-    if (LOG) fprintf(stderr, "Server didn't send JOIN_SUCCESS, exiting...\n");
+    if (LOG) fprintf(stderr, "Server didn't send JOIN_SUCCESS\n");
     exit(EXIT_FAILURE);
 
   } /* Server sent JOIN_SUCCESS! we are now on-line */
@@ -204,7 +198,7 @@ void * sender (void *arg)
     /* TODO: implement a prompt function */
     printf("--> ");
     if (fgets(buf, sizeof(buf), stdin) != (char *) buf) {
-      if (LOG) fprintf(stderr, "[SND] Error reading from stdin, exiting...\n");
+      if (LOG) fprintf(stderr, "[SND] Error reading from stdin\n");
       shouldStop = -1;
       tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
     }
@@ -225,7 +219,6 @@ void * sender (void *arg)
 
     /* Check if message was quit command */
     if (msg_len == close_command_len && strncmp(buf, close_command, close_command_len) == 0) {
-      if (LOG) fprintf(stderr, "[SND] Message was a quit command\n");
       shouldStop = 1;
     }
   }
@@ -325,14 +318,11 @@ int main (int argc, const char *argv[]) {
   }
 
   /* Initialize client data */
-  if (LOG) fprintf(stderr, "Initialize client data\n");
   socket = initialize_client(argv);
 
   /* Handle chat session */
-  if (LOG) fprintf(stderr, "Handle chat session\n");
   chat_session(socket, argv[3]);
 
   /* Close client */
-  if (LOG) fprintf(stderr, "Close client\n");
   exit(EXIT_SUCCESS);
 }
