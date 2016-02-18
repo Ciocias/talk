@@ -2,10 +2,9 @@
 #define TLK_CLIENT_H
 
 #include "tlk_sockets.h"
-#include "tlk_common.h"
-#include "tlk_util.h"
-#include "tlk_errors.h"
 #include "tlk_threads.h"
+#include "tlk_util.h"
+#include "tlk_common.h"
 
 /* Initialize client data */
 tlk_socket_t initialize_client (const char *argv[]);

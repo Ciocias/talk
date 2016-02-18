@@ -21,12 +21,6 @@
 int parse_port_number (const char *input, unsigned short *output);
 
 /*
- * Close @user socket and free structure
- * Exit thread on success, TLK_SOCKET_ERROR on socket shutdown or close failure
- */
-int close_and_free_session (tlk_user_t *user);
-
-/*
  * Send @msg on @socket
  * Returns the number of bytes sent on success, TLK_SOCKET_ERROR on failure
  */

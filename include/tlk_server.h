@@ -1,17 +1,13 @@
 #ifndef TLK_SERVER_H
 #define TLK_SERVER_H
 
-#include <string.h>
-
 #include "tlk_sockets.h"
-#include "tlk_common.h"
-#include "tlk_util.h"
+#include "tlk_threads.h"
+#include "tlk_semaphores.h"
 #include "tlk_users.h"
 #include "tlk_msg_queue.h"
-#include "tlk_errors.h"
-#include "tlk_semaphores.h"
-#include "tlk_linked_list.h"
-#include "tlk_threads.h"
+#include "tlk_util.h"
+#include "tlk_common.h"
 
 /* Thread 'user_handler' args struct */
 typedef struct _thread_node_s {

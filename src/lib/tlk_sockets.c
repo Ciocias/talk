@@ -1,4 +1,38 @@
 #include "../../include/tlk_sockets.h"
+#include <stdio.h>
+#if defined(_WIN32) && _WIN32
+
+/*
+* (Windows only)
+* Initiates use of the Winsock DLL by a process (ignores LPWSADATA parameter)
+* Returns 0 on success, TLK_SOCKET_ERROR on failure
+*/
+int tlk_socket_init() {
+	int ret = 0;
+	WSADATA wsaData;
+
+	ret = WSAStartup(MAKEWORD(2, 2), &wsaData);
+	if (ret) return TLK_SOCKET_ERROR;
+
+	return ret;
+}
+
+/*
+* (Windows only)
+* Terminates use of the Winsock DLL by a process
+* Returns 0 on success, TLK_SOCKET_ERROR on failure
+*/
+int tlk_socket_cleanup() {
+
+	int ret = 0;
+
+	ret = WSACleanup();
+	if (ret) return TLK_SOCKET_ERROR;
+
+	return ret;
+}
+
+#endif
 
 /*
  * Creates a new @type socket with @addr_fam and @protocol
@@ -11,17 +45,9 @@ tlk_socket_t tlk_socket_create(int addr_fam, int type, int protocol) {
 #if defined(_WIN32) && _WIN32
 
   int ret;
-  WSADATA wsaData;
-
-  /* Initialize winsocket 2.2 library */
-  ret = WSAStartup(MAKEWORD(2,2), &wsaData);
-  if (ret != 0) {
-    return TLK_SOCKET_INVALID;
-  }
 
   socket_desc = socket(addr_fam, type, protocol);
   if (socket_desc == INVALID_SOCKET) {
-    WSACleanup();
     return TLK_SOCKET_INVALID;
   }
 
@@ -120,22 +146,6 @@ int tlk_socket_connect(tlk_socket_t socket_desc, const struct sockaddr *addr, in
 }
 
 /*
- * Stop performing @mode operations on @socket_desc
- * Returns 0 on success, TLK_SOCKET_ERROR on failure
- */
-int tlk_socket_shutdown(tlk_socket_t socket_desc, int mode) {
-
-  int ret;
-
-  ret = shutdown(socket_desc, mode);
-  if (ret) {
-    return TLK_SOCKET_ERROR;
-  }
-
-  return ret;
-}
-
-/*
  * Close @socket_desc
  * Returns 0 on success, TLK_SOCKET_ERROR on failure
  */
@@ -148,7 +158,6 @@ int tlk_socket_close(tlk_socket_t socket_desc) {
   if (ret) {
     return TLK_SOCKET_ERROR;
   }
-  WSACleanup();
 
 #elif defined(__linux__) && __linux__
 

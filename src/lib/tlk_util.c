@@ -43,7 +43,7 @@ int send_msg (tlk_socket_t socket, const char *msg) {
       ret = send(socket, msg_to_send + bytes_sent, bytes_left, 0);
 
       if (ret == TLK_SOCKET_ERROR) {
-        if (errno == TLK_EINTR)
+        if (TLK_SOCKET_ERRNO == TLK_EINTR)
           continue;
         return TLK_SOCKET_ERROR;
       }
@@ -70,9 +70,9 @@ int recv_msg (tlk_socket_t socket, char *buf, int buf_len) {
   while (bytes_read <= buf_len) {
       ret = recv(socket, buf + bytes_read, 1, 0);
 
-      if (ret == 0) return TLK_CONN_CLOSED;
+	  if (ret == 0) return TLK_CONN_CLOSED;
       if (ret == TLK_SOCKET_ERROR) {
-        if (errno == TLK_EINTR)
+        if (TLK_SOCKET_ERRNO == TLK_EINTR)
           continue;
         return TLK_SOCKET_ERROR;
        }
@@ -132,9 +132,7 @@ void send_help (tlk_socket_t socket) {
   char msg[MSG_SIZE];
 
   /* Send help message */
-  send_msg(socket, "\n");
-  send_msg(socket, "Commands List\n");
-
+  send_msg(socket, "Available Commands:\n");
 
   /* Send commands list */
   snprintf(

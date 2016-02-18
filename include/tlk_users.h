@@ -33,15 +33,18 @@ typedef struct _tlk_message_s {
 } tlk_message_t;
 
 /*
- *
- *
- */
+* Creates and returns a new user structure
+* returns a pointer to the user on success, NULL on failure
+*/
 tlk_user_t *tlk_user_new (unsigned int incremental_id, tlk_socket_t client_desc, struct sockaddr_in *client_addr);
 
 /*
- *
- *
- */
+* Deallocates user structure
+* Returns:
+*   0 on success,
+*   -1 on queue errors,
+*   TLK_SOCKET_ERROR on socket failure
+*/
 int tlk_user_free (tlk_user_t *user);
 
 /*
@@ -55,16 +58,17 @@ int tlk_user_free (tlk_user_t *user);
 int tlk_user_signin (tlk_user_t *user);
 
 /*
- * Delete user associated with @socket from extern users_list and deallocates memory, thread-safe
+ * Delete @user from extern users_list and frees memory, thread-safe
  * Returns:
  *   0 on success,
  *   -1 on semaphore errors,
+ *   -2 on queue errors,
  *   TLK_SOCKET_ERROR on socket errors
  */
 int tlk_user_signout (tlk_user_t *user);
 
 /*
- * Try to find @nickname as a registered user
+ * Search for a registered user called @nickname 
  * Returns a pointer if found, NULL on failure
  */
 tlk_user_t *tlk_user_find(char *nickname);

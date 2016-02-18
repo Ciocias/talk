@@ -1,5 +1,9 @@
 #include "../../include/tlk_server.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
 unsigned int incremental_id = 1;
 
 /* Users handling data */
@@ -48,6 +52,15 @@ unsigned short initialize_server (const char *argv[]) {
     exit(EXIT_FAILURE);
   }
 
+#if defined(_WIN32) && _WIN32
+  /* Initialize Winsock DLL */
+  ret = tlk_socket_init();
+  if (ret == TLK_SOCKET_ERROR) {
+	  if (LOG) fprintf(stderr, "Cannot initialize Winsock DLL\n");
+	  exit(EXIT_FAILURE);
+  }
+#endif
+
   return port;
 }
 
@@ -62,22 +75,34 @@ void server_main_loop (unsigned short port_number) {
   int sockaddr_len = sizeof(struct sockaddr_in);
 
   server_desc = tlk_socket_create(AF_INET, SOCK_STREAM, 0);
-  ERROR_HELPER(server_desc, "Cannot create socket");
+  if (server_desc == TLK_SOCKET_INVALID) {
+	  if (LOG) fprintf(stderr, "Cannot create socket\n");
+	  exit(EXIT_FAILURE);
+  }
 
-  server_addr.sin_addr.s_addr = INADDR_ANY;
-  server_addr.sin_family      = AF_INET;
-  server_addr.sin_port        = port_number;
+  server_addr.sin_addr.s_addr   = INADDR_ANY;
+  server_addr.sin_family        = AF_INET;
+  server_addr.sin_port          = port_number;
 
   int reuseaddr_opt = 1;
 
   ret = setsockopt(server_desc, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_opt, sizeof(reuseaddr_opt));
-  ERROR_HELPER(ret, "Cannot set option SO_REUSEADDR");
+  if (ret) {
+	  if (LOG) fprintf(stderr, "Cannot set socket option SO_REUSEADDR\n");
+	  exit(EXIT_FAILURE);
+  }
 
   ret = tlk_socket_bind(server_desc, (struct sockaddr *) &server_addr, sockaddr_len);
-  ERROR_HELPER(ret, "Cannot bind on socket");
+  if (ret == TLK_SOCKET_ERROR) {
+	  if (LOG) fprintf(stderr, "Cannot bind socket\n");
+	  exit(EXIT_FAILURE);
+  }
 
   ret = tlk_socket_listen(server_desc, MAX_CONN_QUEUE);
-  ERROR_HELPER(ret, "Cannot listen on socket");
+  if (ret == TLK_SOCKET_ERROR) {
+	  if (LOG) fprintf(stderr, "Cannot listen on socket\n");
+	  exit(EXIT_FAILURE);
+  }
 
   struct sockaddr_in *client_addr = (struct sockaddr_in *) calloc(1, sizeof(struct sockaddr_in));
 
@@ -86,8 +111,12 @@ void server_main_loop (unsigned short port_number) {
   {
     client_desc = tlk_socket_accept(server_desc, (struct sockaddr *) client_addr, sockaddr_len);
 
-    if (client_desc == -1 && errno == TLK_EINTR) continue;
-    ERROR_HELPER(client_desc, "Cannot accept on socket");
+    if (client_desc == TLK_SOCKET_INVALID) {
+		if (TLK_SOCKET_ERRNO == TLK_EINTR) continue;
+
+		if (LOG) fprintf(stderr, "Cannot accept on socket\n");
+		exit(EXIT_FAILURE);
+	}
 
     /* Create new user */
     tlk_user_t *new_user;
@@ -206,9 +235,20 @@ void * user_handler (void *arg)
   ret = tlk_user_signin(user);
   if (ret != 0) {
 
-    snprintf(msg, strlen(REGISTER_FAILED) + 1, "%s", REGISTER_FAILED);
+	  if (ret == NICKNAME_ERROR) 
+	  {
+		snprintf(msg, strlen(NICKNAME_ERROR_MSG) + 1, "%s", NICKNAME_ERROR_MSG);
+	  }
+	  else if (ret == MAX_USERS_ERROR) 
+	  {
+		snprintf(msg, strlen(MAX_USERS_ERROR_MSG) + 1, "%s", MAX_USERS_ERROR_MSG);
+	  }
+	  else 
+	  {
+		snprintf(msg, strlen(REGISTER_FAILED) + 1, "%s", REGISTER_FAILED);
+	  }
 
-    if (LOG) fprintf(stderr, "[USR] Failed to register new user as %s\n", user -> nickname);
+    if (LOG) fprintf(stderr, "[USR] Error registering new user as %s: %s\n", user -> nickname, msg);
     send_msg(user -> socket, msg);
 
     tlk_user_free(user);
@@ -225,6 +265,8 @@ void * user_handler (void *arg)
     tlk_user_signout(user);
     tlk_thread_exit((tlk_exit_t) NULL);
   }
+
+  if (LOG) fprintf(stdout, "@%s is online\n", user->nickname);
 
   /* Send welcome & help (includes commands list) */
   snprintf(msg, strlen(WELCOME_MSG) + strlen(user -> nickname), WELCOME_MSG, user -> nickname);
@@ -255,21 +297,25 @@ void * user_receiver (void *arg)
   {
     /* Check own thread queue (reading) and send to user */
     ret = tlk_queue_dequeue(user -> queue, (void **) &tlk_msg);
-    if (ret) {
+    if (ret) 
+	{
       if (LOG) fprintf(stderr, "[QCR] Dequeuing error\n");
-      tlk_thread_exit((tlk_exit_t) NULL);
+      tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
     }
 
-    if (tlk_msg != NULL) {
-      if (strncmp(tlk_msg -> content, DIE_MSG, strlen(DIE_MSG)) == 0) {
-				tlk_thread_exit((tlk_exit_t) NULL);
+    if (tlk_msg != NULL) 
+	{
+      if (strncmp(tlk_msg -> content, DIE_MSG, strlen(DIE_MSG)) == 0) 
+	  {
+	    tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
       }
 
       /* Not a command: send it to our user */
       ret = send_msg(user -> socket, tlk_msg -> content);
-      if (ret == TLK_SOCKET_ERROR) {
+      if (ret == TLK_SOCKET_ERROR) 
+	  {
         if (LOG) fprintf(stderr, "[QCR] Cannot send message to user\n");
-        tlk_thread_exit((tlk_exit_t) NULL);
+        tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
       }
     }
   }
@@ -323,7 +369,6 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
       if (ret == TLK_SOCKET_ERROR) {
         if (LOG) fprintf(stderr, "[USR] Cannot send error_msg to user %s\n", user -> nickname);
 
-        terminate_receiver(user, waiting_queue);
         return -1;
       }
     }
@@ -333,7 +378,6 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
     if (ret < 0) {
       if (LOG) fprintf(stderr, "[USR] Error enqueuing in waiting queue\n");
 
-      terminate_receiver(user, waiting_queue);
       return -1;
     }
   }
@@ -358,7 +402,6 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
       {
         if (LOG) fprintf(stderr, "[USR] Error enqueuing in waiting queue\n");
 
-        terminate_receiver(user, waiting_queue);
         return -1;
       }
 
@@ -368,7 +411,8 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
     }
     else
     {
-      if (strncmp(msg + 1, CLOSE_COMMAND, strlen(CLOSE_COMMAND)) == 0)
+
+	  if (strncmp(msg + 1, CLOSE_COMMAND, strlen(CLOSE_COMMAND)) == 0)
       {
         ret = pack_and_send_msg(
           user -> id,
@@ -380,8 +424,6 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
         if (ret)
         {
           if (LOG) fprintf(stderr, "[USR] Cannot send message to user\n");
-
-          terminate_receiver(user, waiting_queue);
           return -1;
         }
       }
@@ -389,7 +431,7 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
 
     if (strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0)
         {
-          terminate_receiver(user, waiting_queue);
+		  if (LOG) fprintf(stdout, "@%s is offline\n", user->nickname);
           return 1;
         }
   }
@@ -399,8 +441,6 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
     ret = send_unknown(user -> socket);
     if (ret == TLK_SOCKET_ERROR) {
       if (LOG) fprintf(stderr, "[USR] Cannot send error_msg to user %s\n", user -> nickname);
-
-      terminate_receiver(user, waiting_queue);
       return -1;
     }
 
@@ -409,6 +449,7 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
   return 0;
 }
 
+/* TODO: message_handler description */
 int message_handler(tlk_user_t *user, char msg[MSG_SIZE]){
   int ret;
 
@@ -450,7 +491,8 @@ int message_handler(tlk_user_t *user, char msg[MSG_SIZE]){
 
 /* Chat session handler */
 void user_chat_session (tlk_user_t *user) {
-  int ret, exit_code;
+  int ret;
+  int exit_code;
   int quit = 0;
 
   char msg[MSG_SIZE];
@@ -458,8 +500,9 @@ void user_chat_session (tlk_user_t *user) {
   /* Launch user_receiver thread */
   tlk_thread_t receiver_thread;
 
-	ret = tlk_thread_create(&receiver_thread, (tlk_thread_func) user_receiver, (tlk_thread_args) user);
-	if (ret) {
+  ret = tlk_thread_create(&receiver_thread, (tlk_thread_func) user_receiver, (tlk_thread_args) user);
+  if (ret) 
+  {
     if (LOG) fprintf(stderr, "[USR] Cannot create thread 'user_receiver'\n");
     tlk_user_signout(user);
     tlk_thread_exit((tlk_exit_t) NULL);
@@ -504,10 +547,10 @@ void user_chat_session (tlk_user_t *user) {
 
   /* Terminate user_receiver termination */
   terminate_receiver(user, waiting_queue);
+  tlk_user_signout(user);
   tlk_thread_join(&receiver_thread, (void **) &exit_code);
 
   /* Free resources and close thread */
-  tlk_user_signout(user);
   tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
 }
 
@@ -526,12 +569,21 @@ int main (int argc, const char *argv[]) {
 
   ret = tlk_thread_create(&broker_thread, (tlk_thread_func) broker_routine,  NULL);
   if (ret) {
-    if (LOG) fprintf(stderr, "Cannot create new broker_thread\n");
+    if (LOG) fprintf(stderr, "Cannot create thread 'broker_thread'\n");
     exit(EXIT_FAILURE);
   }
 
   /* Listen for incoming connections */
   server_main_loop(port);
+
+#if defined(_WIN32) && _WIN32
+  /* Terminates use of the Winsock DLL */
+  ret = tlk_socket_cleanup();
+  if (ret == TLK_SOCKET_ERROR) {
+	  if (LOG) fprintf(stderr, "Cannot terminate use of Winsock DLL\n");
+	  exit(EXIT_FAILURE);
+  }
+#endif
 
   /* Close Program */
   exit(EXIT_SUCCESS);

@@ -32,10 +32,11 @@
 #define CLOSE_MSG            "%c%s            -> Close chat session"
 #define QUIT_MSG             "%c%s             -> Quit"
 
-/* TMP */
 #define JOIN_FAILED          "Join Error"
 #define JOIN_SUCCESS         "Join Success"
 #define REGISTER_FAILED      "Register Error"
+#define MAX_USERS_ERROR_MSG  "Max users limit reached"
+#define NICKNAME_ERROR_MSG   "Nickname already taken"
 #define USER_NOT_FOUND       "Unable to find user"
 #define BEGIN_CHAT_MSG       "You're now talking with %s!"
 #define NO_NICKNAME          "Error: no nickname specified"

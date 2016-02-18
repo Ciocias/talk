@@ -34,7 +34,7 @@ int tlk_sem_destroy(tlk_sem_t *sem) {
 
 #if defined(_WIN32) && _WIN32
 
-  ret = (CloseHandle(sem) != FALSE ? 0 : -1);
+  ret = (CloseHandle(*sem) != FALSE ? 0 : -1);
 
 #elif defined(__linux__) && __linux__
 
@@ -55,7 +55,7 @@ int tlk_sem_wait(tlk_sem_t *sem) {
 
 #if defined(_WIN32) && _WIN32
 
-	ret = WaitForSingleObject(*sem, INFINITE) != WAIT_FAILED ? 0 : -1);
+	ret = (WaitForSingleObject(*sem, INFINITE) != WAIT_FAILED ? 0 : -1);
 
 #elif defined(__linux__) && __linux__
 

@@ -55,11 +55,15 @@ int tlk_thread_join(tlk_thread_t *thread, void **exit_code) {
 
 #if defined(_WIN32) && _WIN32
 
-  ret = (WaitForSingleObject(*thread, INFINITE) != WAIT_FAILED ? 0 : -1);
+  ret = (WaitForSingleObject((HANDLE) *thread, INFINITE) != WAIT_FAILED ? 0 : -1);
   if (ret) return ret;
-  
-  ret = (GetExitCodeThread(*thread, (LPDWORD) *exit_code) != 0 ? 0 : -1);
 
+  *exit_code = ret;
+
+  /* TODO: Find a correct way to get exitcode from threads on windows */  
+  /*
+  ret = (GetExitCodeThread((HANDLE) *thread, (LPDWORD) *exit_code) != 0 ? 0 : -1);
+  */
 #elif defined(__linux__) && __linux__
 
   ret = pthread_join(*thread, exit_code);
