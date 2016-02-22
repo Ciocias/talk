@@ -263,7 +263,6 @@ void * sender (void *arg)
 		&&
 		(strncmp(buf, close_command, close_command_len) == 0))
 	{
-      if (LOG) fprintf(stderr, "[SND] Sent close command\n");
       shouldStop = 1;
     }
   }

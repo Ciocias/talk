@@ -235,15 +235,15 @@ void * user_handler (void *arg)
   ret = tlk_user_signin(user);
   if (ret != 0) {
 
-	  if (ret == NICKNAME_ERROR) 
+	  if (ret == NICKNAME_ERROR)
 	  {
 		snprintf(msg, strlen(NICKNAME_ERROR_MSG) + 1, "%s", NICKNAME_ERROR_MSG);
 	  }
-	  else if (ret == MAX_USERS_ERROR) 
+	  else if (ret == MAX_USERS_ERROR)
 	  {
 		snprintf(msg, strlen(MAX_USERS_ERROR_MSG) + 1, "%s", MAX_USERS_ERROR_MSG);
 	  }
-	  else 
+	  else
 	  {
 		snprintf(msg, strlen(REGISTER_FAILED) + 1, "%s", REGISTER_FAILED);
 	  }
@@ -297,23 +297,23 @@ void * user_receiver (void *arg)
   {
     /* Check own thread queue (reading) and send to user */
     ret = tlk_queue_dequeue(user -> queue, (void **) &tlk_msg);
-    if (ret) 
-	{
+    if (ret)
+    {
       if (LOG) fprintf(stderr, "[QCR] Dequeuing error\n");
       tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
     }
 
-    if (tlk_msg != NULL) 
-	{
-      if (strncmp(tlk_msg -> content, DIE_MSG, strlen(DIE_MSG)) == 0) 
-	  {
-	    tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
+    if (tlk_msg != NULL)
+    {
+      if (strncmp(tlk_msg -> content, DIE_MSG, strlen(DIE_MSG)) == 0)
+      {
+        tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
       }
 
       /* Not a command: send it to our user */
       ret = send_msg(user -> socket, tlk_msg -> content);
-      if (ret == TLK_SOCKET_ERROR) 
-	  {
+      if (ret == TLK_SOCKET_ERROR)
+      {
         if (LOG) fprintf(stderr, "[QCR] Cannot send message to user\n");
         tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
       }
@@ -401,7 +401,6 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
       if (ret)
       {
         if (LOG) fprintf(stderr, "[USR] Error enqueuing in waiting queue\n");
-
         return -1;
       }
 
@@ -411,8 +410,7 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
     }
     else
     {
-
-	  if (strncmp(msg + 1, CLOSE_COMMAND, strlen(CLOSE_COMMAND)) == 0)
+      if (strncmp(msg + 1, CLOSE_COMMAND, strlen(CLOSE_COMMAND)) == 0)
       {
         ret = pack_and_send_msg(
           user -> id,
@@ -430,16 +428,17 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
     } /* (user -> status == TALKING) */
 
     if (strncmp(msg + 1, QUIT_COMMAND, strlen(QUIT_COMMAND)) == 0)
-        {
-		  if (LOG) fprintf(stdout, "@%s is offline\n", user->nickname);
-          return 1;
-        }
+    {
+      if (LOG) fprintf(stdout, "@%s is offline\n", user->nickname);
+      return 1;
+    }
   }
   else
   {
 
     ret = send_unknown(user -> socket);
-    if (ret == TLK_SOCKET_ERROR) {
+    if (ret == TLK_SOCKET_ERROR)
+    {
       if (LOG) fprintf(stderr, "[USR] Cannot send error_msg to user %s\n", user -> nickname);
       return -1;
     }
@@ -501,7 +500,7 @@ void user_chat_session (tlk_user_t *user) {
   tlk_thread_t receiver_thread;
 
   ret = tlk_thread_create(&receiver_thread, (tlk_thread_func) user_receiver, (tlk_thread_args) user);
-  if (ret) 
+  if (ret)
   {
     if (LOG) fprintf(stderr, "[USR] Cannot create thread 'user_receiver'\n");
     tlk_user_signout(user);
