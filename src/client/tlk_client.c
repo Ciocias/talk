@@ -237,7 +237,7 @@ void * sender (void *arg)
     /* TODO: implement a prompt function */
     fprintf(stdout, "--> ");
     if (fgets(buf, sizeof(buf), stdin) != (char *) buf)
-	{
+  	{
       if (LOG) fprintf(stderr, "[SND] Error reading from stdin\n");
       shouldStop = -1;
       tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
@@ -252,24 +252,22 @@ void * sender (void *arg)
     ret = send_msg(*socket, buf);
 
     if (ret == TLK_SOCKET_ERROR)
-	{
+  	{
       if (LOG) fprintf(stderr, "[SND] Error writing to socket\n");
       shouldStop = -1;
       tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
     }
 
     /* Check if message was quit command */
-    if ((msg_len == close_command_len)
-		&&
-		(strncmp(buf, close_command, close_command_len) == 0))
-	{
+    if ((msg_len == close_command_len) && (strncmp(buf, close_command, close_command_len) == 0))
+  	{
       shouldStop = 1;
     }
   }
 
   /* Terminate sender thread */
   tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
-
+  
   /* Avoid compiler warnings */
   return (tlk_exit_t) EXIT_SUCCESS;
 }
@@ -285,6 +283,19 @@ void * receiver (void *arg)
 {
   int ret;
   tlk_socket_t *socket = (tlk_socket_t *) arg;
+  /* Close command*/
+  char close_command[MSG_SIZE];
+
+  snprintf(close_command, 2 + strlen(QUIT_COMMAND), "%c%s\n", COMMAND_CHAR, QUIT_COMMAND);
+
+  /*size_t close_command_len = strlen(close_command);*/
+
+  /* Die command*/
+  char die_command[MSG_SIZE];
+
+  snprintf(die_command, 1 + strlen(DIE_MSG), "%s\n", DIE_MSG);
+
+  size_t die_command_len = strlen(die_command);
 
   /* Set up read file descriptors */
   fd_set read_descriptors;
@@ -323,20 +334,35 @@ void * receiver (void *arg)
     /* Read is now possible */
     ret = recv_msg(*socket, buf, MSG_SIZE);
     if (ret == TLK_SOCKET_ERROR)
-	{
+    {
       /* Endpoint has closed unexpectedly */
       if (LOG) fprintf(stderr, "[REC] recv_msg: Endpoint has closed unexpectedly\n");
       shouldStop = -1;
       tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
     }
-	else if (ret == TLK_CONN_CLOSED)
-	{
+    else if (ret == TLK_CONN_CLOSED)
+    {
       /* Endpoint has closed gracefully */
       shouldStop = 1;
       break;
+
     }
-	else
-	{
+    else if ( strlen(buf) == die_command_len && strncmp(buf, die_command, die_command_len) == 0)
+    {
+      fprintf(stdout, "Server is currently closed\n", buf);
+
+      ret = send_msg(*socket, close_command);
+      if (ret == TLK_SOCKET_ERROR) 
+      {
+        if (LOG) fprintf(stderr, "[SND] Error writing to socket\n");
+        shouldStop = -1;
+        tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
+      }
+      shouldStop = 1;
+      break;
+    }
+    else
+    {
       /* TODO: Let the client know he's talking with someone */
       /* Show received data to user */
       fprintf(stdout, "%s\n", buf);

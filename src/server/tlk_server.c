@@ -4,12 +4,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if defined(__linux__) && __linux__
+#include <signal.h>
+#endif
+
 unsigned int incremental_id = 1;
+
+/* Broker handling thread*/
+tlk_thread_t broker_thread;
 
 /* Users handling data */
 tlk_sem_t users_mutex;
 unsigned int current_users;
 tlk_user_t *users_list[MAX_USERS];
+
+struct sockaddr_in *client_addr;
+tlk_socket_t server_desc;
 
 /* Input queue for broker thread */
 tlk_queue_t *waiting_queue          = NULL;
@@ -22,6 +32,51 @@ void usage_error_server (const char *prog_name) {
   fprintf(stdout, "Usage: %s <port_number>\n", prog_name);
   exit(EXIT_FAILURE);
 }
+
+void quit_handler(int signal) {
+  if (LOG) fprintf(stdout, "Exiting...\n");
+
+  /* Kill all user client */
+  unsigned int i;
+  int ret;
+
+  ret = tlk_sem_wait(&users_mutex);
+  if(ret) exit(EXIT_FAILURE);
+
+  for (i = 0; i < current_users; i++)
+    send_msg(users_list[i] -> socket, DIE_MSG);
+
+  ret = tlk_sem_post(&users_mutex);
+  if(ret) exit(EXIT_FAILURE);
+
+  while(current_users > 0) continue;
+
+  /* Notify broker thread that we're closing */
+  ret = pack_and_send_msg(
+        0,
+        NULL,
+        NULL,
+        (char *) BRK_DIE_MSG,
+        waiting_queue
+  );
+
+  if (!ret)
+  {
+    tlk_thread_join(&broker_thread, NULL);
+  }
+  /* Destroy user data semaphore */
+  tlk_sem_destroy(&users_mutex);
+
+  /* Free global waiting_queue */
+  tlk_queue_free(waiting_queue);
+
+  free(client_addr);
+
+  tlk_socket_close(server_desc);
+
+  exit(EXIT_FAILURE);
+}
+
 
 /* Initialize server data */
 unsigned short initialize_server (const char *argv[]) {
@@ -68,7 +123,7 @@ unsigned short initialize_server (const char *argv[]) {
 void server_main_loop (unsigned short port_number) {
 
   int ret;
-  tlk_socket_t server_desc, client_desc;
+  tlk_socket_t client_desc;
 
   /* Set up socket and other connection data */
   struct sockaddr_in server_addr = { 0 };
@@ -104,7 +159,7 @@ void server_main_loop (unsigned short port_number) {
 	  exit(EXIT_FAILURE);
   }
 
-  struct sockaddr_in *client_addr = (struct sockaddr_in *) calloc(1, sizeof(struct sockaddr_in));
+  client_addr = (struct sockaddr_in *) calloc(1, sizeof(struct sockaddr_in));
 
   /* Wait for incoming connections */
   while (1)
@@ -165,7 +220,7 @@ DWORD WINAPI broker_routine (LPVOID arg)
 void * broker_routine (void)
 #endif
 {
-  tlk_message_t *msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
+  tlk_message_t *msg = NULL;
 
   while (1)
   {
@@ -178,6 +233,11 @@ void * broker_routine (void)
       break;
     }
 
+    /* Check if broker needs to exit */
+#if defined(__linux__) && __linux__
+    if (strncmp(msg -> content, BRK_DIE_MSG, strlen(BRK_DIE_MSG)) == 0)
+      break;
+#endif
 
     /* Select correct user queue from @users_list */
     ret = tlk_sem_wait(&users_mutex);
@@ -188,15 +248,17 @@ void * broker_routine (void)
     }
 
     unsigned int i;
-    for (i = 0; i < current_users; i++) {
+    for (i = 0; i < current_users; i++)
+    {
 
       if (users_list[i] == NULL) continue;
 
-      if (users_list[i] -> id == (msg -> receiver) -> id) {
-
+      if (users_list[i] -> id == (msg -> receiver) -> id)
+      {
         /* Sort message in correct queue */
         ret = tlk_queue_enqueue(users_list[i] -> queue, (void **) &msg);
-        if (ret != 0) {
+        if (ret != 0)
+        {
           if (LOG) fprintf(stderr, "[BRK] Cannot sort message in correct queue\n");
           break;
         }
@@ -212,8 +274,6 @@ void * broker_routine (void)
 
   }
 
-  /* Deallocate @msg and exit thread */
-  if (msg != NULL) free(msg);
   tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
 
   /* Avoid compiler warnings */
@@ -306,7 +366,7 @@ void * user_receiver (void *arg)
 #endif
 {
   int ret;
-  tlk_message_t *tlk_msg = (tlk_message_t *) malloc(sizeof(tlk_message_t));
+  tlk_message_t *tlk_msg = NULL;
   tlk_user_t *user = (tlk_user_t *) arg;
 
   while (1)
@@ -316,14 +376,16 @@ void * user_receiver (void *arg)
     if (ret)
     {
       if (LOG) fprintf(stderr, "[QCR] Dequeuing error\n");
-      tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
+      break;
     }
 
     if (tlk_msg != NULL)
     {
       if (strncmp(tlk_msg -> content, DIE_MSG, strlen(DIE_MSG)) == 0)
       {
-        tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
+        free(tlk_msg -> content);
+        free(tlk_msg);
+				tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
       }
 
       /* Not a command: send it to our user */
@@ -331,10 +393,21 @@ void * user_receiver (void *arg)
       if (ret == TLK_SOCKET_ERROR)
       {
         if (LOG) fprintf(stderr, "[QCR] Cannot send message to user\n");
-        tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
+        break;
       }
+
+      free(tlk_msg -> content);
+      free(tlk_msg);
     }
   }
+
+  free(tlk_msg -> content);
+  free(tlk_msg);
+
+  tlk_thread_exit((tlk_exit_t) EXIT_FAILURE); 
+
+  /* Avoid compiler warnings */
+  return NULL;
 }
 
 /* TODO: commands_handler description */
@@ -546,10 +619,8 @@ void user_chat_session (tlk_user_t *user) {
   } while (!quit);
 
   if (quit > 0) {
-
     /* User choosed to quit */
     sprintf(msg, "%s, Thank you for talking!", user -> nickname);
-
     send_msg(user -> socket, msg);
   }
 
@@ -580,13 +651,16 @@ int main (int argc, const char *argv[]) {
   unsigned short port = initialize_server(argv);
 
   /* Launch broker thread */
-  tlk_thread_t broker_thread;
 
   ret = tlk_thread_create(&broker_thread, (tlk_thread_func) broker_routine,  NULL);
   if (ret) {
     if (LOG) fprintf(stderr, "Cannot create thread 'broker_thread'\n");
     exit(EXIT_FAILURE);
   }
+
+#if defined(__linux__) && __linux__
+  signal(SIGINT,quit_handler);
+#endif
 
   /* Listen for incoming connections */
   server_main_loop(port);
