@@ -16,9 +16,7 @@
 
 #define WELCOME_MSG          "Welcome to Talk, user %s!"
 
-#define MSG_DELIMITER_CHAR   '|'
 #define COMMAND_CHAR         '/'
-
 #define HELP_CMD         	   "help"
 #define JOIN_COMMAND         "join"
 #define LIST_COMMAND         "list"

@@ -291,9 +291,6 @@ void * receiver (void *arg)
   int nfds = *(socket) + 1;
 
   char buf[MSG_SIZE];
-  char delimiter[2];
-
-  snprintf(delimiter, 1, "%c", MSG_DELIMITER_CHAR);
 
   while (!shouldStop)
   {
