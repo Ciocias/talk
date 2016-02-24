@@ -180,8 +180,17 @@ void * broker_routine (void)
 
 
     /* Select correct user queue from @users_list */
+    ret = tlk_sem_wait(&users_mutex);
+    if (ret)
+    {
+      if (LOG) fprintf(stderr, "[BRK] Cannot wait on users_mutex\n");
+      break;
+    }
+
     unsigned int i;
     for (i = 0; i < current_users; i++) {
+
+      if (users_list[i] == NULL) continue;
 
       if (users_list[i] -> id == (msg -> receiver) -> id) {
 
@@ -192,6 +201,13 @@ void * broker_routine (void)
           break;
         }
       }
+    }
+
+    ret = tlk_sem_post(&users_mutex);
+    if (ret)
+    {
+      if (LOG) fprintf(stderr, "[BRK] Cannot post on users_mutex\n");
+      break;
     }
 
   }
@@ -490,9 +506,9 @@ int message_handler(tlk_user_t *user, char msg[MSG_SIZE]){
 
 /* Chat session handler */
 void user_chat_session (tlk_user_t *user) {
-  int ret;
-  int exit_code;
+  int ret = 0;
   int quit = 0;
+  int exit_code = 0;
 
   char msg[MSG_SIZE];
 
@@ -546,8 +562,8 @@ void user_chat_session (tlk_user_t *user) {
 
   /* Terminate user_receiver termination */
   terminate_receiver(user, waiting_queue);
-  tlk_user_signout(user);
   tlk_thread_join(&receiver_thread, (void **) &exit_code);
+  tlk_user_signout(user);
 
   /* Free resources and close thread */
   tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);

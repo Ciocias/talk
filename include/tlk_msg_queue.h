@@ -14,7 +14,6 @@ typedef struct _tlk_queue_s {
   tlk_sem_t write_mutex;
 
   unsigned int buffer_length;
-  int _padding; /* Could be the solution for random server crashes */
   void **buffer;
 
 } tlk_queue_t;

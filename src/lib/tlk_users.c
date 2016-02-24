@@ -31,7 +31,7 @@ tlk_user_t *tlk_user_new (unsigned int incremental_id, tlk_socket_t client_desc,
 
 /*
  * Deallocates user structure
- * Returns: 
+ * Returns:
  *   0 on success,
  *   -1 on queue errors,
  *   TLK_SOCKET_ERROR on socket failure
@@ -116,7 +116,7 @@ int tlk_user_signout (tlk_user_t *user) {
   for (i = 0; i < current_users; i++) {
     if (users_list[i] -> id == user -> id) {
 
-      ret = tlk_user_free(user);
+    ret = tlk_user_free(user);
 	  if (ret) {
 		  if (ret == TLK_SOCKET_ERROR) return TLK_SOCKET_ERROR;
 		  return -2;
