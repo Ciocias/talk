@@ -28,17 +28,19 @@ tlk_queue_t *waiting_queue          = NULL;
  * Print server usage to standard error
  * Returns nothing
  */
-void usage_error_server (const char *prog_name) {
+void usage_error_server (const char *prog_name)
+{
   fprintf(stdout, "Usage: %s <port_number>\n", prog_name);
   exit(EXIT_FAILURE);
 }
 
-void quit_handler(int signal) {
-  if (LOG) fprintf(stdout, "Exiting...\n");
+void quit_handler (int signal)
+{
+  if (LOG) fprintf(stdout, "Interrupt signal %d received\n", signal);
 
-  /* Kill all user client */
-  unsigned int i;
+  /* Notify all users to quit */
   int ret;
+  unsigned int i;
 
   ret = tlk_sem_wait(&users_mutex);
   if(ret) exit(EXIT_FAILURE);
@@ -51,7 +53,7 @@ void quit_handler(int signal) {
 
   while(current_users > 0) continue;
 
-  /* Notify broker thread that we're closing */
+  /* Close broker thread */
   ret = pack_and_send_msg(
         0,
         NULL,
@@ -60,23 +62,20 @@ void quit_handler(int signal) {
         waiting_queue
   );
 
-  if (!ret)
-  {
-    tlk_thread_join(&broker_thread, NULL);
-  }
-  /* Destroy user data semaphore */
-  tlk_sem_destroy(&users_mutex);
+  /* Wait for broker thread termination */
+  tlk_thread_join(&broker_thread, NULL);
 
   /* Free global waiting_queue */
   tlk_queue_free(waiting_queue);
 
-  free(client_addr);
+  /* Destroy user data semaphore */
+  tlk_sem_destroy(&users_mutex);
 
+  free(client_addr);
   tlk_socket_close(server_desc);
 
-  exit(EXIT_FAILURE);
+  exit(EXIT_SUCCESS);
 }
-
 
 /* Initialize server data */
 unsigned short initialize_server (const char *argv[]) {
@@ -166,12 +165,14 @@ void server_main_loop (unsigned short port_number) {
   {
     client_desc = tlk_socket_accept(server_desc, (struct sockaddr *) client_addr, sockaddr_len);
 
-    if (client_desc == TLK_SOCKET_INVALID) {
-		if (TLK_SOCKET_ERRNO == TLK_EINTR) continue;
-
-		if (LOG) fprintf(stderr, "Cannot accept on socket\n");
-		exit(EXIT_FAILURE);
-	}
+    if (client_desc == TLK_SOCKET_INVALID)
+    {
+		  if (TLK_SOCKET_ERRNO == TLK_EINTR)
+        continue;
+		  if (LOG) fprintf(stderr, "Cannot accept on socket\n");
+      free(client_addr);
+		  exit(EXIT_FAILURE);
+	  }
 
     /* Create new user */
     tlk_user_t *new_user;
@@ -234,10 +235,7 @@ void * broker_routine (void)
     }
 
     /* Check if broker needs to exit */
-#if defined(__linux__) && __linux__
-    if (strncmp(msg -> content, BRK_DIE_MSG, strlen(BRK_DIE_MSG)) == 0)
-      break;
-#endif
+    if (strncmp(msg -> content, BRK_DIE_MSG, strlen(BRK_DIE_MSG)) == 0) break;
 
     /* Select correct user queue from @users_list */
     ret = tlk_sem_wait(&users_mutex);
@@ -274,6 +272,12 @@ void * broker_routine (void)
 
   }
 
+  if (msg != NULL) {
+    free(msg -> content);
+    free(msg);
+  }
+
+  /* Exit broker thread */
   tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
 
   /* Avoid compiler warnings */
@@ -404,7 +408,7 @@ void * user_receiver (void *arg)
   free(tlk_msg -> content);
   free(tlk_msg);
 
-  tlk_thread_exit((tlk_exit_t) EXIT_FAILURE); 
+  tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
 
   /* Avoid compiler warnings */
   return NULL;
