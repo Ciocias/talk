@@ -7,6 +7,7 @@ Testing is done on:
   + ElementaryOS Freya
   + Windows 7 64bit
   + Windows 10 64bit
+  + Ubuntu 14.04 64bit
 
 ## Prerequisites
 

@@ -1,19 +1,7 @@
-#########################################################
-#							#
-#  A starting point towards automated project building  #
-#							#
-#########################################################
+.phony: build clean
 
-.phony: build-linux clean-linux build-win clean-win
-
-build-linux:
+build:
 	mkdir build && cd build && cmake .. && make && cd ..
 
-clean-linux:
+clean:
 	rm -rf build
-
-build-win:
-	mkdir build && cd build && cmake .. && "C:\MinGW\bin\mingw32-make.exe" && cd ..
-
-clean-win:
-	del build\* && rmdir build
