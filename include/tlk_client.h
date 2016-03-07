@@ -13,7 +13,7 @@ tlk_socket_t initialize_client (const char *argv[]);
 void join_server(tlk_socket_t *socket, const char *nickname);
 
 /* Handle chat session */
-void chat_session (tlk_socket_t socket, const char *nickname);
+void chat_session (tlk_socket_t socket);
 
 /* Receiver thread */
 #if defined(_WIN32) && _WIN32

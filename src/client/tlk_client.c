@@ -8,13 +8,39 @@
 
 int shouldStop = 0;
 
-/*
- * Print client usage to standard error
- * Returns nothing
- */
-void usage_error_client (const char *prog_name) {
-  fprintf(stdout, "Usage: %s <IP_address> <port_number> <nickname>\n", prog_name);
-  exit(EXIT_FAILURE);
+
+int main (int argc, const char *argv[]) {
+
+  tlk_socket_t socket;
+
+  if (argc != 4)
+  {
+    /* Print client usage to standard error */
+    fprintf(stdout, "Usage: %s <IP_address> <port_number> <nickname>\n", argv[0]);
+    exit(EXIT_FAILURE);
+  }
+
+  /* Initialize client data */
+  socket = initialize_client(argv);
+
+  /* Try to join server as @nickname */
+  join_server(&socket, argv[3]);
+
+  /* Handle chat session */
+  chat_session(socket);
+
+  #if defined(_WIN32) && _WIN32
+  /* Terminates use of the Winsock DLL */
+  int ret = tlk_socket_cleanup();
+  if (ret == TLK_SOCKET_ERROR)
+  {
+    if (LOG) fprintf(stderr, "Cannot terminate use of Winsock DLL\n");
+    exit(EXIT_FAILURE);
+  }
+  #endif
+
+  /* Close client */
+  exit(EXIT_SUCCESS);
 }
 
 /* Initialize client data */
@@ -30,7 +56,8 @@ tlk_socket_t initialize_client (const char *argv[]) {
 #if defined(_WIN32) && _WIN32
   /* Initialize Winsock DLL */
   ret = tlk_socket_init();
-  if (ret == TLK_SOCKET_ERROR) {
+  if (ret == TLK_SOCKET_ERROR)
+  {
 	  if (LOG) fprintf(stderr, "Cannot initialize Winsock DLL\n");
 	  exit(EXIT_FAILURE);
   }
@@ -42,14 +69,13 @@ tlk_socket_t initialize_client (const char *argv[]) {
   if (ret <= 0)
   {
     if (ret == 0)
-	{
-      fprintf(stderr, "Address not valid\n");
+	  {
+      if (LOG) fprintf(stderr, "Address not valid\n");
     }
-	else if (ret == -1 && TLK_SOCKET_ERRNO == TLK_EAFNOSUPPORT)
-	{
+	  else if (ret == -1 && TLK_SOCKET_ERRNO == TLK_EAFNOSUPPORT)
+	  {
       if (LOG) fprintf(stderr, "Address family not valid\n");
     }
-
     exit(EXIT_FAILURE);
   }
 
@@ -58,7 +84,7 @@ tlk_socket_t initialize_client (const char *argv[]) {
 
   if (ret == -1)
   {
-    fprintf(stderr, "Port not valid: must be between 1024 and 49151\n");
+    if (LOG) fprintf(stderr, "Port not valid: must be between 1024 and 49151\n");
     exit(EXIT_FAILURE);
   }
 
@@ -167,32 +193,32 @@ void join_server(tlk_socket_t *socket, const char *nickname) {
 }
 
 /* Handle chat session */
-void chat_session (tlk_socket_t socket, const char *nickname) {
+void chat_session (tlk_socket_t socket) {
 
   int ret;
   int exit_code;
   tlk_thread_t chat_threads[2];
 
-  /* Try to join server as @nickname */
-  join_server(&socket, nickname);
-
   /* Launch receiver thread */
   ret = tlk_thread_create(&chat_threads[0], receiver, (tlk_thread_args *) &socket);
-  if (ret) {
+  if (ret)
+  {
     if (LOG) fprintf(stderr, "Cannot create receiver thread\n");
     exit(EXIT_FAILURE);
   }
 
   /* Launch sender thread */
   ret = tlk_thread_create(&chat_threads[1], sender, (tlk_thread_args *) &socket);
-  if (ret) {
+  if (ret)
+  {
     if (LOG) fprintf(stderr, "Cannot create sender thread\n");
     exit(EXIT_FAILURE);
   }
 
   /* Wait for termination */
   ret = tlk_thread_join(&chat_threads[0], (void **) &exit_code);
-  if (ret) {
+  if (ret)
+  {
     if (LOG) fprintf(stderr, "Cannot wait for receiver thread termination\n");
     exit(EXIT_FAILURE);
   }
@@ -200,7 +226,8 @@ void chat_session (tlk_socket_t socket, const char *nickname) {
   fprintf(stdout, "Press Enter to exit\n");
 
   ret = tlk_thread_join(&chat_threads[1], (void **) &exit_code);
-  if (ret) {
+  if (ret)
+  {
     if (LOG) fprintf(stderr, "Cannot wait for sender thread termination\n");
     exit(EXIT_FAILURE);
   }
@@ -267,7 +294,7 @@ void * sender (void *arg)
 
   /* Terminate sender thread */
   tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
-  
+
   /* Avoid compiler warnings */
   return (tlk_exit_t) EXIT_SUCCESS;
 }
@@ -319,7 +346,7 @@ void * receiver (void *arg)
     ret = select(nfds, &read_descriptors, NULL, NULL, NULL);
 
     if (ret == TLK_SOCKET_ERROR)
-	{
+	  {
       /* Interrupt received: retry */
       if (TLK_SOCKET_ERRNO == TLK_EINTR) continue;
 
@@ -345,14 +372,13 @@ void * receiver (void *arg)
       /* Endpoint has closed gracefully */
       shouldStop = 1;
       break;
-
     }
     else if ( strlen(buf) == die_command_len && strncmp(buf, die_command, die_command_len) == 0)
     {
-      fprintf(stdout, "Server is currently closed\n", buf);
+      fprintf(stdout, "Server is currently closed\n");
 
       ret = send_msg(*socket, close_command);
-      if (ret == TLK_SOCKET_ERROR) 
+      if (ret == TLK_SOCKET_ERROR)
       {
         if (LOG) fprintf(stderr, "[SND] Error writing to socket\n");
         shouldStop = -1;
@@ -367,38 +393,12 @@ void * receiver (void *arg)
       /* Show received data to user */
       fprintf(stdout, "%s\n", buf);
     }
-  }
+
+  } /* End of while loop */
 
   /* Terminate receiver thread */
   tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
 
   /* Avoid compiler warnings */
   return (tlk_exit_t) EXIT_SUCCESS;
-}
-
-int main (int argc, const char *argv[]) {
-
-  tlk_socket_t socket;
-
-  if (argc != 4) {
-    usage_error_client(argv[0]);
-  }
-
-  /* Initialize client data */
-  socket = initialize_client(argv);
-
-  /* Handle chat session */
-  chat_session(socket, argv[3]);
-
-#if defined(_WIN32) && _WIN32
-  /* Terminates use of the Winsock DLL */
-  int ret = tlk_socket_cleanup();
-  if (ret == TLK_SOCKET_ERROR) {
-	  if (LOG) fprintf(stderr, "Cannot terminate use of Winsock DLL\n");
-	  exit(EXIT_FAILURE);
-  }
-#endif
-
-  /* Close client */
-  exit(EXIT_SUCCESS);
 }
