@@ -9,8 +9,8 @@
 int shouldStop = 0;
 
 
-int main (int argc, const char *argv[]) {
-
+int main (int argc, const char *argv[]) 
+{
   tlk_socket_t socket;
 
   if (argc != 4)
@@ -44,8 +44,8 @@ int main (int argc, const char *argv[]) {
 }
 
 /* Initialize client data */
-tlk_socket_t initialize_client (const char *argv[]) {
-
+tlk_socket_t initialize_client (const char *argv[]) 
+{
   int ret;
   tlk_socket_t socket_desc;
   struct sockaddr_in endpoint_addr = { 0 };
@@ -113,8 +113,8 @@ tlk_socket_t initialize_client (const char *argv[]) {
 }
 
 /* Send JOIN command to server */
-void join_server(tlk_socket_t *socket, const char *nickname) {
-
+void join_server (tlk_socket_t *socket, const char *nickname) 
+{
   int ret;
   char join_command[MSG_SIZE];
   int join_command_len = 1 + strlen(JOIN_COMMAND) + strlen(" ") + strlen(nickname) + 1;
@@ -130,7 +130,8 @@ void join_server(tlk_socket_t *socket, const char *nickname) {
   /* Send command to server */
   ret = send_msg(*socket, join_command);
 
-  if (ret == TLK_SOCKET_ERROR) {
+  if (ret == TLK_SOCKET_ERROR) 
+  {
     if (LOG) fprintf(stderr, "Error sending JOIN_COMMAND to server\n");
     exit(EXIT_FAILURE);
   }
@@ -143,58 +144,44 @@ void join_server(tlk_socket_t *socket, const char *nickname) {
 
   if (server_res_len == TLK_SOCKET_ERROR)
   {
-
     if (LOG) fprintf(stderr, "Error reading from server socket\n");
     exit(EXIT_FAILURE);
-
   }
   else if (server_res_len == TLK_CONN_CLOSED)
   {
-
     if (LOG) fprintf(stderr, "Server closed the connection\n");
     exit(EXIT_FAILURE);
-
   }
   else if (strncmp(server_res, JOIN_FAILED, strlen(JOIN_FAILED)) == 0)
   {
-
     if (LOG) fprintf(stderr, "Join failed\n");
     exit(EXIT_FAILURE);
-
   }
   else if (strncmp(server_res, NICKNAME_ERROR_MSG, strlen(NICKNAME_ERROR_MSG)) == 0)
   {
-
 	  fprintf(stdout, "Nickname already in use\n");
 	  exit(EXIT_FAILURE);
-
   }
   else if (strncmp(server_res, MAX_USERS_ERROR_MSG, strlen(MAX_USERS_ERROR_MSG)) == 0)
   {
-
 	  fprintf(stdout, "Max users limit reached\n");
 	  exit(EXIT_FAILURE);
-
   }
   else if (strncmp(server_res, REGISTER_FAILED, strlen(REGISTER_FAILED)) == 0)
   {
-
 	  if (LOG) fprintf(stderr, "Register failed\n");
 	  exit(EXIT_FAILURE);
-
   }
   else if (strncmp(server_res, JOIN_SUCCESS, strlen(JOIN_SUCCESS)) != 0)
   {
-
     if (LOG) fprintf(stderr, "Server didn't send JOIN_SUCCESS\n");
     exit(EXIT_FAILURE);
-
   } /* Server sent JOIN_SUCCESS! we are now on-line */
 }
 
 /* Handle chat session */
-void chat_session (tlk_socket_t socket) {
-
+void chat_session (tlk_socket_t socket) 
+{
   int ret;
   int exit_code;
   tlk_thread_t chat_threads[2];
@@ -332,7 +319,6 @@ void * receiver (void *arg)
 
   while (!shouldStop)
   {
-
     FD_ZERO(&read_descriptors);
     FD_SET(*socket, &read_descriptors);
 

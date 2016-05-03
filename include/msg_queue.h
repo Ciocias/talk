@@ -4,7 +4,6 @@
 #include "tlk_semaphores.h"
 
 typedef struct _tlk_queue_s {
-
   int read_index;
   int write_index;
 

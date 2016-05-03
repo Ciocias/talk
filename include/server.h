@@ -8,13 +8,6 @@
 #include "msg_queue.h"
 #include "util.h"
 #include "common.h"
-
-/* Thread 'user_handler' args struct */
-typedef struct _thread_node_s {
-  int id;
-  tlk_queue_t *queue;
-} thread_node_t;
-
 /* Initialize server data */
 unsigned short initialize_server (const char *argv[]);
 
@@ -43,10 +36,10 @@ void * user_receiver (void *arg);
 #endif
 
 /* TODO: commands_handler description */
-int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]);
+int commands_handler (tlk_user_t *user, char msg[MSG_SIZE]);
 
 /* TODO: message_handler description */
-int message_handler(tlk_user_t *user, char msg[MSG_SIZE]);
+int message_handler (tlk_user_t *user, char msg[MSG_SIZE]);
 
 /* Chat session handler */
 void user_chat_session (tlk_user_t *user);

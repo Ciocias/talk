@@ -5,8 +5,8 @@
  * @max_value is needed on windows
  * Returns 0 on success, -1 on failure
  */
-int tlk_sem_init(tlk_sem_t *sem, unsigned int value, unsigned int max_value) {
-
+int tlk_sem_init (tlk_sem_t *sem, unsigned int value, unsigned int max_value) 
+{
   int ret = 0;
 
 #if defined(_WIN32) && _WIN32
@@ -28,8 +28,8 @@ int tlk_sem_init(tlk_sem_t *sem, unsigned int value, unsigned int max_value) {
  * Close and destroy @sem
  * Returns 0 on success, -1 on failure
  */
-int tlk_sem_destroy(tlk_sem_t *sem) {
-
+int tlk_sem_destroy (tlk_sem_t *sem) 
+{
   int ret = 0;
 
 #if defined(_WIN32) && _WIN32
@@ -49,8 +49,8 @@ int tlk_sem_destroy(tlk_sem_t *sem) {
  * Perform a wait operation on @sem
  * Returns 0 on success, -1 on failure
  */
-int tlk_sem_wait(tlk_sem_t *sem) {
-
+int tlk_sem_wait (tlk_sem_t *sem) 
+{
   int ret = 0;
 
 #if defined(_WIN32) && _WIN32
@@ -64,15 +64,14 @@ int tlk_sem_wait(tlk_sem_t *sem) {
 #endif
 
   return ret;
-
 }
 
 /*
  * Perform a post operation on @sem
  * Returns 0 on success, -1 on failure
  */
-int tlk_sem_post(tlk_sem_t *sem) {
-
+int tlk_sem_post (tlk_sem_t *sem) 
+{
   int ret = 0;
 
 #if defined(_WIN32) && _WIN32
@@ -86,5 +85,4 @@ int tlk_sem_post(tlk_sem_t *sem) {
 #endif
 
   return ret;
-
 }

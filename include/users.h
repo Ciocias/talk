@@ -71,6 +71,6 @@ int tlk_user_signout (tlk_user_t *user);
  * Search for a registered user called @nickname 
  * Returns a pointer if found, NULL on failure
  */
-tlk_user_t *tlk_user_find(char *nickname);
+tlk_user_t *tlk_user_find (char *nickname);
 
 #endif /* TLK_USERS_H */

@@ -6,8 +6,8 @@
  * Initialize a new tlk_queue_t with @size
  * Returns a pointer to the new structure on success, NULL on failure
  */
-tlk_queue_t *tlk_queue_new (int size) {
-
+tlk_queue_t *tlk_queue_new (int size) 
+{
 	int ret = 0;
 	tlk_queue_t *aux = (tlk_queue_t *) malloc(sizeof(tlk_queue_t));
 
@@ -36,8 +36,8 @@ tlk_queue_t *tlk_queue_new (int size) {
  * Enqueue @msg in @q, this function is thread-safe
  * Returns 0 on success, -1 on failure
  */
-int tlk_queue_enqueue (tlk_queue_t *q, void **msg) {
-
+int tlk_queue_enqueue (tlk_queue_t *q, void **msg) 
+{
   int ret = 0;
 
   ret = tlk_sem_wait(&(q -> empty_count));
@@ -63,8 +63,8 @@ int tlk_queue_enqueue (tlk_queue_t *q, void **msg) {
  * Dequeue first message in @q and put it inside @msg
  * Returns 0 on success, -1 on failure
  */
-int tlk_queue_dequeue (tlk_queue_t *q, void **msg) {
-
+int tlk_queue_dequeue (tlk_queue_t *q, void **msg) 
+{
   int ret = 0;
 
   ret = tlk_sem_wait(&(q -> fill_count));
@@ -90,8 +90,8 @@ int tlk_queue_dequeue (tlk_queue_t *q, void **msg) {
  * Destroy queue @q
  * Returns 0 on success, -1 on failure
  */
-int tlk_queue_free (tlk_queue_t *q) {
-
+int tlk_queue_free (tlk_queue_t *q) 
+{
   int ret = 0;
 
   /* Delete struct semaphores */

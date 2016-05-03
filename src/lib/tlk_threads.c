@@ -4,7 +4,8 @@
  * Creates a new thread
  * Returns 0 on success, -1 on failure
  */
-int tlk_thread_create(tlk_thread_t *thread, tlk_thread_func thread_routine, tlk_thread_args t_args) {
+int tlk_thread_create (tlk_thread_t *thread, tlk_thread_func thread_routine, tlk_thread_args t_args) 
+{
   int ret = 0;
 
 #if defined(_WIN32) && _WIN32
@@ -27,8 +28,8 @@ int tlk_thread_create(tlk_thread_t *thread, tlk_thread_func thread_routine, tlk_
  * Detaches @thread from the current process
  * Returns 0 on success, -1 on failure
  */
-int tlk_thread_detach(tlk_thread_t *thread) {
-
+int tlk_thread_detach (tlk_thread_t *thread) 
+{
   int ret = 0;
 
 #if defined(_WIN32) && _WIN32
@@ -49,8 +50,8 @@ int tlk_thread_detach(tlk_thread_t *thread) {
  * Wait for @thread termination
  * Returns 0 on success, -1 on failure
  */
-int tlk_thread_join(tlk_thread_t *thread, void **exit_code) {
-
+int tlk_thread_join (tlk_thread_t *thread, void **exit_code) 
+{
   int ret = 0;
 
 #if defined(_WIN32) && _WIN32
@@ -78,7 +79,8 @@ int tlk_thread_join(tlk_thread_t *thread, void **exit_code) {
  * Terminates the current thread with @exit_code
  * Returns nothing
  */
-void tlk_thread_exit(tlk_exit_t exit_code) {
+void tlk_thread_exit (tlk_exit_t exit_code) 
+{
 #if defined(_WIN32) && _WIN32
 
   ExitThread(exit_code);

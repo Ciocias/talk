@@ -16,7 +16,8 @@ tlk_thread_t broker_thread;
 /* Users handling data */
 tlk_sem_t users_mutex;
 unsigned int current_users;
-tlk_user_t *users_list[MAX_USERS];
+tlk_user_t *users[MAX_USERS];
+tlk_thread_t *threads[MAX_USERS];
 
 struct sockaddr_in *client_addr;
 tlk_socket_t server_desc;
@@ -28,15 +29,17 @@ tlk_queue_t *waiting_queue          = NULL;
  * Print server usage to standard error
  * Returns nothing
  */
+
 void usage_error_server (const char *prog_name)
 {
   fprintf(stdout, "Usage: %s <port_number>\n", prog_name);
   exit(EXIT_FAILURE);
 }
 
+#if defined(__linux__) && __linux__
 void quit_handler (int signal)
 {
-  if (LOG) fprintf(stdout, "Interrupt signal %d received\n", signal);
+  if (LOG) fprintf(stdout, "Signal %d received\n", signal);
 
   /* Notify all users to quit */
   int ret;
@@ -46,20 +49,30 @@ void quit_handler (int signal)
   if(ret) exit(EXIT_FAILURE);
 
   for (i = 0; i < current_users; i++)
-    send_msg(users_list[i] -> socket, DIE_MSG);
+    send_msg(users[i] -> socket, DIE_MSG);
 
   ret = tlk_sem_post(&users_mutex);
   if(ret) exit(EXIT_FAILURE);
+
+  /* Wait for user threads */
+  for (ret = 0; ret < MAX_USERS; ret++)
+  {
+
+    if (threads[ret] != TLK_THREAD_INVALID) 
+    {
+      tlk_thread_join(threads[ret], NULL);
+    }
+  }
 
   while(current_users > 0) continue;
 
   /* Close broker thread */
   ret = pack_and_send_msg(
-        0,
-        NULL,
-        NULL,
-        (char *) BRK_DIE_MSG,
-        waiting_queue
+    0,
+    NULL,
+    NULL,
+    (char *) BRK_DIE_MSG,
+    waiting_queue
   );
 
   /* Wait for broker thread termination */
@@ -76,22 +89,25 @@ void quit_handler (int signal)
 
   exit(EXIT_SUCCESS);
 }
+#endif
 
 /* Initialize server data */
-unsigned short initialize_server (const char *argv[]) {
-
+unsigned short initialize_server (const char *argv[]) 
+{
   int ret;
   unsigned short port = 0;
 
   ret = parse_port_number(argv[1], &port);
-  if (ret == -1) {
+  if (ret == -1) 
+  {
     fprintf(stdout, "Port not valid: must be between 1024 and 49151\n");
     exit(EXIT_FAILURE);
   }
 
   /* Initialize user data semaphore */
   ret = tlk_sem_init(&users_mutex, 1, 1);
-  if (ret) {
+  if (ret) 
+  {
     if (LOG) fprintf(stderr, "Cannot initialize users_mutex semaphore\n");
     exit(EXIT_FAILURE);
   }
@@ -101,7 +117,8 @@ unsigned short initialize_server (const char *argv[]) {
 
   /* Initialize global waiting_queue */
   waiting_queue = tlk_queue_new(QUEUE_SIZE);
-  if (waiting_queue == NULL) {
+  if (waiting_queue == NULL) 
+  {
     if (LOG) fprintf(stderr, "Cannot create new waiting_queue with size %d\n", QUEUE_SIZE);
     exit(EXIT_FAILURE);
   }
@@ -109,9 +126,10 @@ unsigned short initialize_server (const char *argv[]) {
 #if defined(_WIN32) && _WIN32
   /* Initialize Winsock DLL */
   ret = tlk_socket_init();
-  if (ret == TLK_SOCKET_ERROR) {
-	  if (LOG) fprintf(stderr, "Cannot initialize Winsock DLL\n");
-	  exit(EXIT_FAILURE);
+  if (ret == TLK_SOCKET_ERROR) 
+  {
+    if (LOG) fprintf(stderr, "Cannot initialize Winsock DLL\n");
+    exit(EXIT_FAILURE);
   }
 #endif
 
@@ -119,7 +137,8 @@ unsigned short initialize_server (const char *argv[]) {
 }
 
 /* Server listening loop */
-void server_main_loop (unsigned short port_number) {
+void server_main_loop (unsigned short port_number) 
+{
 
   int ret;
   tlk_socket_t client_desc;
@@ -129,9 +148,10 @@ void server_main_loop (unsigned short port_number) {
   int sockaddr_len = sizeof(struct sockaddr_in);
 
   server_desc = tlk_socket_create(AF_INET, SOCK_STREAM, 0);
-  if (server_desc == TLK_SOCKET_INVALID) {
-	  if (LOG) fprintf(stderr, "Cannot create socket\n");
-	  exit(EXIT_FAILURE);
+  if (server_desc == TLK_SOCKET_INVALID) 
+  {
+    if (LOG) fprintf(stderr, "Cannot create socket\n");
+    exit(EXIT_FAILURE);
   }
 
   server_addr.sin_addr.s_addr   = INADDR_ANY;
@@ -141,21 +161,24 @@ void server_main_loop (unsigned short port_number) {
   int reuseaddr_opt = 1;
 
   ret = setsockopt(server_desc, SOL_SOCKET, SO_REUSEADDR, &reuseaddr_opt, sizeof(reuseaddr_opt));
-  if (ret) {
-	  if (LOG) fprintf(stderr, "Cannot set socket option SO_REUSEADDR\n");
-	  exit(EXIT_FAILURE);
+  if (ret) 
+  {
+    if (LOG) fprintf(stderr, "Cannot set socket option SO_REUSEADDR\n");
+    exit(EXIT_FAILURE);
   }
 
   ret = tlk_socket_bind(server_desc, (struct sockaddr *) &server_addr, sockaddr_len);
-  if (ret == TLK_SOCKET_ERROR) {
-	  if (LOG) fprintf(stderr, "Cannot bind socket\n");
-	  exit(EXIT_FAILURE);
+  if (ret == TLK_SOCKET_ERROR) 
+  {
+    if (LOG) fprintf(stderr, "Cannot bind socket\n");
+    exit(EXIT_FAILURE);
   }
 
   ret = tlk_socket_listen(server_desc, MAX_CONN_QUEUE);
-  if (ret == TLK_SOCKET_ERROR) {
-	  if (LOG) fprintf(stderr, "Cannot listen on socket\n");
-	  exit(EXIT_FAILURE);
+  if (ret == TLK_SOCKET_ERROR) 
+  {
+    if (LOG) fprintf(stderr, "Cannot listen on socket\n");
+    exit(EXIT_FAILURE);
   }
 
   client_addr = (struct sockaddr_in *) calloc(1, sizeof(struct sockaddr_in));
@@ -167,32 +190,36 @@ void server_main_loop (unsigned short port_number) {
 
     if (client_desc == TLK_SOCKET_INVALID)
     {
-		  if (TLK_SOCKET_ERRNO == TLK_EINTR)
-        continue;
-		  if (LOG) fprintf(stderr, "Cannot accept on socket\n");
+      if (TLK_SOCKET_ERRNO == TLK_EINTR) continue;
+      
+      if (LOG) fprintf(stderr, "Cannot accept on socket\n");
+      
       free(client_addr);
-		  exit(EXIT_FAILURE);
-	  }
+      exit(EXIT_FAILURE);
+    }
 
     /* Create new user */
     tlk_user_t *new_user;
 
     ret = tlk_sem_wait(&users_mutex);
-    if (ret) {
+    if (ret) 
+    {
       if (LOG) fprintf(stderr, "Cannot wait on users_mutex semaphore\n");
       exit(EXIT_FAILURE);
     }
 
     new_user = tlk_user_new(incremental_id, client_desc, client_addr);
-    if (new_user == NULL) {
-       if (LOG) fprintf(stderr, "Cannot create new user");
+    if (new_user == NULL) 
+    {
+      if (LOG) fprintf(stderr, "Cannot create new user");
       exit(EXIT_FAILURE);
     }
 
     incremental_id += 1;
 
     ret = tlk_sem_post(&users_mutex);
-    if (ret) {
+    if (ret) 
+    {
       if (LOG) fprintf(stderr, "Cannot post on users_mutex semaphore\n");
       exit(EXIT_FAILURE);
     }
@@ -205,6 +232,24 @@ void server_main_loop (unsigned short port_number) {
     {
       if (LOG) fprintf(stderr, "Error creating a new user thread\n");
       send_msg(client_desc, "Error creating a new user thread\n");
+    }
+    else
+    {
+      ret = tlk_sem_wait(&users_mutex);
+      if (ret) 
+      {
+        if (LOG) fprintf(stderr, "Cannot wait on users_mutex semaphore\n");
+        exit(EXIT_FAILURE);
+      }
+
+      threads[current_users] = &user_thread;
+
+      ret = tlk_sem_post(&users_mutex);
+      if (ret) 
+      {
+        if (LOG) fprintf(stderr, "Cannot post on users_mutex semaphore\n");
+        exit(EXIT_FAILURE);
+      }
     }
 
     /* Allocate new space for next user */
@@ -229,7 +274,8 @@ void * broker_routine (void)
 
     /* Check for messages in the waiting queue */
     ret = tlk_queue_dequeue(waiting_queue, (void **) &msg);
-    if (ret != 0) {
+    if (ret != 0)
+    {
       if (LOG) fprintf(stderr, "[BRK] Cannot check for messages in the waiting queue\n");
       break;
     }
@@ -237,7 +283,7 @@ void * broker_routine (void)
     /* Check if broker needs to exit */
     if (strncmp(msg -> content, BRK_DIE_MSG, strlen(BRK_DIE_MSG)) == 0) break;
 
-    /* Select correct user queue from @users_list */
+    /* Select correct user queue from @users */
     ret = tlk_sem_wait(&users_mutex);
     if (ret)
     {
@@ -245,16 +291,16 @@ void * broker_routine (void)
       break;
     }
 
+    /* Sort message in correct queue */
     unsigned int i;
     for (i = 0; i < current_users; i++)
     {
 
-      if (users_list[i] == NULL) continue;
+      if (users[i] == NULL) continue;
 
-      if (users_list[i] -> id == (msg -> receiver) -> id)
+      if (users[i] -> id == (msg -> receiver) -> id)
       {
-        /* Sort message in correct queue */
-        ret = tlk_queue_enqueue(users_list[i] -> queue, (void **) &msg);
+        ret = tlk_queue_enqueue(users[i] -> queue, (void **) &msg);
         if (ret != 0)
         {
           if (LOG) fprintf(stderr, "[BRK] Cannot sort message in correct queue\n");
@@ -272,7 +318,8 @@ void * broker_routine (void)
 
   }
 
-  if (msg != NULL) {
+  if (msg != NULL)
+  {
     free(msg -> content);
     free(msg);
   }
@@ -300,8 +347,8 @@ void * user_handler (void *arg)
   /* Wait for a join message from client */
   int join_msg_len = recv_msg(user -> socket, msg, MSG_SIZE);
 
-  if (join_msg_len < 0 || parse_join_msg(msg, strlen(msg), user -> nickname) != 0) {
-
+  if (join_msg_len < 0 || parse_join_msg(msg, strlen(msg), user -> nickname) != 0) 
+  {
     snprintf(msg, strlen(JOIN_FAILED) + 1, "%s", JOIN_FAILED);
 
     if (LOG) fprintf(stderr, "[USR] Failed to join new user as %s\n", user -> nickname);
@@ -313,20 +360,20 @@ void * user_handler (void *arg)
 
   /* Register new user with given nickname */
   ret = tlk_user_signin(user);
-  if (ret != 0) {
-
-	  if (ret == NICKNAME_ERROR)
-	  {
-		snprintf(msg, strlen(NICKNAME_ERROR_MSG) + 1, "%s", NICKNAME_ERROR_MSG);
-	  }
-	  else if (ret == MAX_USERS_ERROR)
-	  {
-		snprintf(msg, strlen(MAX_USERS_ERROR_MSG) + 1, "%s", MAX_USERS_ERROR_MSG);
-	  }
-	  else
-	  {
-		snprintf(msg, strlen(REGISTER_FAILED) + 1, "%s", REGISTER_FAILED);
-	  }
+  if (ret != 0) 
+  {
+    if (ret == NICKNAME_ERROR)
+    {
+      snprintf(msg, strlen(NICKNAME_ERROR_MSG) + 1, "%s", NICKNAME_ERROR_MSG);
+    }
+    else if (ret == MAX_USERS_ERROR)
+    {
+      snprintf(msg, strlen(MAX_USERS_ERROR_MSG) + 1, "%s", MAX_USERS_ERROR_MSG);
+    }
+    else
+    {
+      snprintf(msg, strlen(REGISTER_FAILED) + 1, "%s", REGISTER_FAILED);
+    }
 
     if (LOG) fprintf(stderr, "[USR] Error registering new user as %s: %s\n", user -> nickname, msg);
     send_msg(user -> socket, msg);
@@ -339,7 +386,8 @@ void * user_handler (void *arg)
   snprintf(msg, strlen(JOIN_SUCCESS) + 1, "%s", JOIN_SUCCESS);
 
   ret = send_msg(user -> socket, msg);
-  if (ret == TLK_SOCKET_ERROR) {
+  if (ret == TLK_SOCKET_ERROR) 
+  {
     if (LOG) fprintf(stderr, "[USR] Cannot notify the client: delete new user and exit\n");
 
     tlk_user_signout(user);
@@ -389,7 +437,7 @@ void * user_receiver (void *arg)
       {
         free(tlk_msg -> content);
         free(tlk_msg);
-				tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
+        tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
       }
 
       /* Not a command: send it to our user */
@@ -405,8 +453,11 @@ void * user_receiver (void *arg)
     }
   }
 
-  free(tlk_msg -> content);
-  free(tlk_msg);
+  if (tlk_msg != NULL)
+  {
+    free(tlk_msg -> content);
+    free(tlk_msg);
+  }
 
   tlk_thread_exit((tlk_exit_t) EXIT_FAILURE);
 
@@ -415,26 +466,21 @@ void * user_receiver (void *arg)
 }
 
 /* TODO: commands_handler description */
-int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
-
+int commands_handler (tlk_user_t *user, char msg[MSG_SIZE]) 
+{
   int ret;
   char error_msg[MSG_SIZE];
 
   if (strncmp(msg + 1, HELP_CMD, strlen(HELP_CMD)) == 0)
   {
-
     send_help(user -> socket);
-
   }
   else if (strncmp(msg + 1, LIST_COMMAND, strlen(LIST_COMMAND)) == 0)
   {
-
-    send_list(current_users, user -> socket, users_list);
-
+    send_list(current_users, user -> socket, users);
   }
   else if (strncmp(msg + 1, TALK_COMMAND, strlen(TALK_COMMAND)) == 0)
   {
-
     /* TODO: refactor code into subroutine */
 
     size_t msg_len = strlen(msg);
@@ -443,7 +489,6 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
     /* Send error if no nickname is specified */
     if (msg_len <= talk_command_len + 1)
     {
-
       if (LOG) fprintf(stderr, "[USR] Error no nickname specified\n");
       snprintf(error_msg, strlen(NO_NICKNAME), NO_NICKNAME);
 
@@ -453,13 +498,15 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
 
     /* Try to find user with given nickname */
     user -> listener = tlk_user_find(msg + talk_command_len + 1);
-    if (user -> listener == NULL) {
+    if (user -> listener == NULL) 
+    {
       if (LOG) fprintf(stderr, "[USR] Unable to start new talk session\n");
 
       snprintf(error_msg, strlen(USER_NOT_FOUND) + 1, USER_NOT_FOUND);
 
       ret = send_msg(user -> socket, error_msg);
-      if (ret == TLK_SOCKET_ERROR) {
+      if (ret == TLK_SOCKET_ERROR) 
+      {
         if (LOG) fprintf(stderr, "[USR] Cannot send error_msg to user %s\n", user -> nickname);
 
         return -1;
@@ -468,7 +515,8 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
 
     /* Try to start a talking session with the given nickname */
     ret = talk_session(user, waiting_queue);
-    if (ret < 0) {
+    if (ret < 0) 
+    {
       if (LOG) fprintf(stderr, "[USR] Error enqueuing in waiting queue\n");
 
       return -1;
@@ -528,21 +576,20 @@ int commands_handler(tlk_user_t *user, char msg[MSG_SIZE]) {
   }
   else
   {
-
     ret = send_unknown(user -> socket);
     if (ret == TLK_SOCKET_ERROR)
     {
       if (LOG) fprintf(stderr, "[USR] Cannot send error_msg to user %s\n", user -> nickname);
       return -1;
     }
-
   } /* Unknown command */
 
   return 0;
 }
 
 /* TODO: message_handler description */
-int message_handler(tlk_user_t *user, char msg[MSG_SIZE]){
+int message_handler (tlk_user_t *user, char msg[MSG_SIZE]) 
+{
   int ret;
 
   if (msg[0] == COMMAND_CHAR)
@@ -582,7 +629,8 @@ int message_handler(tlk_user_t *user, char msg[MSG_SIZE]){
 }
 
 /* Chat session handler */
-void user_chat_session (tlk_user_t *user) {
+void user_chat_session (tlk_user_t *user) 
+{
   int ret = 0;
   int quit = 0;
   int exit_code = 0;
@@ -600,7 +648,8 @@ void user_chat_session (tlk_user_t *user) {
     tlk_thread_exit((tlk_exit_t) NULL);
   }
 
-  do {
+  do 
+  {
     /* Receive data from user */
     int len = recv_msg(user -> socket, msg, MSG_SIZE);
 
@@ -619,17 +668,19 @@ void user_chat_session (tlk_user_t *user) {
     {
       /* Ignore empty messages */
     }
-
   } while (!quit);
 
-  if (quit > 0) {
+  if (quit > 0) 
+  {
     /* User choosed to quit */
     sprintf(msg, "%s, Thank you for talking!", user -> nickname);
     send_msg(user -> socket, msg);
   }
 
-  if (user -> status == TALKING) {
-    if ((user -> listener) != NULL) {
+  if (user -> status == TALKING) 
+  {
+    if ((user -> listener) != NULL) 
+    {
       (user -> listener) -> status = IDLE;
       (user -> listener) -> listener = NULL;
     }
@@ -644,27 +695,28 @@ void user_chat_session (tlk_user_t *user) {
   tlk_thread_exit((tlk_exit_t) EXIT_SUCCESS);
 }
 
-int main (int argc, const char *argv[]) {
-
+int main (int argc, const char *argv[]) 
+{
   int ret;
-  if (argc != 2) {
+  if (argc != 2) 
+  {
     usage_error_server(argv[0]);
   }
 
   /* Initialize server data */
   unsigned short port = initialize_server(argv);
 
-  /* Launch broker thread */
+  #if defined(__linux__) && __linux__
+    signal(SIGINT, quit_handler);
+  #endif
 
+  /* Launch broker thread */
   ret = tlk_thread_create(&broker_thread, (tlk_thread_func) broker_routine,  NULL);
-  if (ret) {
+  if (ret) 
+  {
     if (LOG) fprintf(stderr, "Cannot create thread 'broker_thread'\n");
     exit(EXIT_FAILURE);
   }
-
-#if defined(__linux__) && __linux__
-  signal(SIGINT,quit_handler);
-#endif
 
   /* Listen for incoming connections */
   server_main_loop(port);
@@ -672,9 +724,10 @@ int main (int argc, const char *argv[]) {
 #if defined(_WIN32) && _WIN32
   /* Terminates use of the Winsock DLL */
   ret = tlk_socket_cleanup();
-  if (ret == TLK_SOCKET_ERROR) {
-	  if (LOG) fprintf(stderr, "Cannot terminate use of Winsock DLL\n");
-	  exit(EXIT_FAILURE);
+  if (ret == TLK_SOCKET_ERROR) 
+  {
+    if (LOG) fprintf(stderr, "Cannot terminate use of Winsock DLL\n");
+    exit(EXIT_FAILURE);
   }
 #endif
 

@@ -4,15 +4,15 @@
 #include <string.h>
 
 extern tlk_sem_t users_mutex;
-extern tlk_user_t *users_list[];
+extern tlk_user_t *users[];
 extern unsigned int current_users;
 
 /*
  * Creates and returns a new user structure
  * returns a pointer to the user on success, NULL on failure
  */
-tlk_user_t *tlk_user_new (unsigned int incremental_id, tlk_socket_t client_desc, struct sockaddr_in *client_addr) {
-
+tlk_user_t *tlk_user_new (unsigned int incremental_id, tlk_socket_t client_desc, struct sockaddr_in *client_addr) 
+{
   tlk_user_t *new_user = (tlk_user_t *) malloc(sizeof(tlk_user_t));
 
   new_user -> id        = incremental_id;
@@ -36,8 +36,8 @@ tlk_user_t *tlk_user_new (unsigned int incremental_id, tlk_socket_t client_desc,
  *   -1 on queue errors,
  *   TLK_SOCKET_ERROR on socket failure
  */
-int tlk_user_free (tlk_user_t *user) {
-
+int tlk_user_free (tlk_user_t *user) 
+{
   int ret = 0;
 
   ret = tlk_socket_close(user -> socket);
@@ -54,22 +54,23 @@ int tlk_user_free (tlk_user_t *user) {
 }
 
 /*
- * Register @user into extern users_list if possible, thread-safe
+ * Register @user into extern users if possible, thread-safe
  * Returns:
  *   0 on success,
  *   -1 on semaphore errors,
  *   MAX_USERS_ERROR if users count exceed the limit,
  *   NICKNAME_ERROR if nickname is already taken;
  */
-int tlk_user_signin (tlk_user_t *user) {
-
+int tlk_user_signin (tlk_user_t *user) 
+{
   int ret = 0;
 
   ret = tlk_sem_wait(&users_mutex);
   if (ret) return ret;
 
   /* Check for max users limit */
-  if (current_users >= MAX_USERS) {
+  if (current_users >= MAX_USERS) 
+  {
     ret = tlk_sem_post(&users_mutex);
     if (ret) return ret;
 
@@ -78,9 +79,10 @@ int tlk_user_signin (tlk_user_t *user) {
 
   /* Check if given nickname is already taken */
   unsigned int i;
-  for (i = 0; i < current_users; i++) {
-
-    if ( strncmp(user -> nickname, users_list[i] -> nickname, strlen(user -> nickname)) == 0 ) {
+  for (i = 0; i < current_users; i++) 
+  {
+    if ( strncmp(user -> nickname, users[i] -> nickname, strlen(user -> nickname)) == 0 ) 
+    {
       ret = tlk_sem_post(&users_mutex);
       if (ret) return ret;
 
@@ -88,8 +90,8 @@ int tlk_user_signin (tlk_user_t *user) {
     }
   }
 
-  /* Insert new user in users_list */
-  users_list[current_users] = user;
+  /* Insert new user in users */
+  users[current_users] = user;
   ++current_users;
 
   /* Done, release the semaphore and exit */
@@ -98,36 +100,40 @@ int tlk_user_signin (tlk_user_t *user) {
 }
 
 /*
- * Delete @user from extern users_list and frees memory, thread-safe
+ * Delete @user from extern users and frees memory, thread-safe
  * Returns:
  *   0 on success,
  *   -1 on semaphore errors,
  *   -2 on queue errors,
  *   TLK_SOCKET_ERROR on socket errors
  */
-int tlk_user_signout (tlk_user_t *user) {
-
+int tlk_user_signout (tlk_user_t *user) 
+{
   int ret = 0;
 
   ret = tlk_sem_wait(&users_mutex);
   if (ret) return ret;
 
   unsigned int i;
-  for (i = 0; i < current_users; i++) {
-    if (users_list[i] -> id == user -> id) {
+  for (i = 0; i < current_users; i++) 
+  {
+    if (users[i] -> id == user -> id) 
+    {
 
     ret = tlk_user_free(user);
-	  if (ret) {
-		  if (ret == TLK_SOCKET_ERROR) return TLK_SOCKET_ERROR;
-		  return -2;
-	  }
-      users_list[i] = NULL;
+    if (ret) 
+    {
+      if (ret == TLK_SOCKET_ERROR) return TLK_SOCKET_ERROR;
+      return -2;
+    }
+      users[i] = NULL;
 
-      for (; i < current_users - 1; i++) {
-        users_list[i] = users_list[i + 1]; /* Shift all elements by 1 */
+      for (; i < current_users - 1; i++) 
+      {
+        users[i] = users[i + 1]; /* Shift all elements by 1 */
       }
 
-      users_list[i] = NULL;
+      users[i] = NULL;
       current_users--;
 
       ret = tlk_sem_post(&users_mutex);
@@ -143,8 +149,8 @@ int tlk_user_signout (tlk_user_t *user) {
  * Search for a registered user called @nickname
  * Returns a pointer if found, NULL on failure
  */
-tlk_user_t *tlk_user_find(char *nickname) {
-
+tlk_user_t *tlk_user_find (char *nickname) 
+{
   int ret;
   tlk_user_t *result = NULL;
 
@@ -154,9 +160,11 @@ tlk_user_t *tlk_user_find(char *nickname) {
   unsigned int i;
   size_t nickname_len = strlen(nickname);
 
-  for (i = 0; i < current_users; i++) {
-    if (strncmp(nickname, users_list[i] -> nickname, nickname_len) == 0) {
-      result = users_list[i];
+  for (i = 0; i < current_users; i++) 
+  {
+    if (strncmp(nickname, users[i] -> nickname, nickname_len) == 0) 
+    {
+      result = users[i];
       break;
     }
   }

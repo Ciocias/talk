@@ -8,12 +8,14 @@
  * Parse network-ordered port number from @input string and put it in @output
  * Returns 0 on success, -1 on failure
  */
-int parse_port_number (const char *input, unsigned short *output) {
+int parse_port_number (const char *input, unsigned short *output) 
+{
   long tmp;
 
   tmp = strtol(input, NULL, 0);
 
-  if (tmp < 1024 || tmp > 49151) {
+  if (tmp < 1024 || tmp > 49151) 
+  {
     return -1;
   }
 
@@ -26,7 +28,8 @@ int parse_port_number (const char *input, unsigned short *output) {
  * Send @msg on @socket
  * Returns the number of bytes sent on success, TLK_SOCKET_ERROR on failure
  */
-int send_msg (tlk_socket_t socket, const char *msg) {
+int send_msg (tlk_socket_t socket, const char *msg) 
+{
   int ret = 0;
   char msg_to_send[MSG_SIZE];
 
@@ -39,18 +42,20 @@ int send_msg (tlk_socket_t socket, const char *msg) {
   int bytes_left = strlen(msg_to_send);
   int bytes_sent = 0;
 
-  while (bytes_left > 0) {
-      ret = send(socket, msg_to_send + bytes_sent, bytes_left, 0);
+  while (bytes_left > 0) 
+  {
+    ret = send(socket, msg_to_send + bytes_sent, bytes_left, 0);
 
-      if (ret == TLK_SOCKET_ERROR) {
-        if (TLK_SOCKET_ERRNO == TLK_EINTR)
-          continue;
-        return TLK_SOCKET_ERROR;
-      }
+    if (ret == TLK_SOCKET_ERROR) {
+      if (TLK_SOCKET_ERRNO == TLK_EINTR)
+        continue;
+      return TLK_SOCKET_ERROR;
+    }
 
-      bytes_left -= ret;
-      bytes_sent += ret;
+    bytes_left -= ret;
+    bytes_sent += ret;
   }
+  
   ret = send(socket, "\n", 1, 0);
 
   return bytes_sent;
@@ -63,23 +68,25 @@ int send_msg (tlk_socket_t socket, const char *msg) {
  *  TLK_CONN_CLOSED if the endpoint has gracefully closed the connection
  *  TLK_SOCKET_ERROR on failure
  */
-int recv_msg (tlk_socket_t socket, char *buf, int buf_len) {
+int recv_msg (tlk_socket_t socket, char *buf, int buf_len) 
+{
   int ret = 0;
   int bytes_read = 0;
 
-  while (bytes_read <= buf_len) {
-      ret = recv(socket, buf + bytes_read, 1, 0);
+  while (bytes_read <= buf_len) 
+  {
+    ret = recv(socket, buf + bytes_read, 1, 0);
 
 	  if (ret == 0) return TLK_CONN_CLOSED;
-      if (ret == TLK_SOCKET_ERROR) {
-        if (TLK_SOCKET_ERRNO == TLK_EINTR)
-          continue;
-        return TLK_SOCKET_ERROR;
-       }
+    if (ret == TLK_SOCKET_ERROR) 
+    {
+      if (TLK_SOCKET_ERRNO == TLK_EINTR) continue;
+      return TLK_SOCKET_ERROR;
+    }
 
-      if (buf[bytes_read] == '\n') break;
+    if (buf[bytes_read] == '\n') break;
 
-      bytes_read++;
+    bytes_read++;
   }
 
   buf[bytes_read] = '\0';
@@ -93,31 +100,34 @@ int recv_msg (tlk_socket_t socket, char *buf, int buf_len) {
 char join_msg_prefix[MSG_SIZE];
 size_t join_msg_prefix_len = 0;
 
-int parse_join_msg (char *msg, size_t msg_len, char *nickname) {
-
+int parse_join_msg (char *msg, size_t msg_len, char *nickname) 
+{
   /* Build message prefix only the first time for efficiency */
-  if (join_msg_prefix_len == 0) {
-
+  if (join_msg_prefix_len == 0) 
+  {
     snprintf(
       join_msg_prefix,
       strlen(JOIN_COMMAND) + 2,
       "%c%s ",
       COMMAND_CHAR, JOIN_COMMAND
     );
+
     join_msg_prefix_len = strlen(join_msg_prefix);
   }
 
   int ret = strncmp(msg, join_msg_prefix, join_msg_prefix_len);
 
-  if (msg_len > join_msg_prefix_len && ret == 0) {
-
+  if (msg_len > join_msg_prefix_len && ret == 0) 
+  {
     snprintf(
       nickname,
       msg_len - (join_msg_prefix_len) + 1,
       "%s",
       msg + join_msg_prefix_len + 1
     );
+
     return 0;
+
   } else {
     return -1;
   }
@@ -127,8 +137,8 @@ int parse_join_msg (char *msg, size_t msg_len, char *nickname) {
  * Send help message and commands list through @socket
  * Returns nothing
  */
-void send_help (tlk_socket_t socket) {
-
+void send_help (tlk_socket_t socket) 
+{
   char msg[MSG_SIZE];
 
   /* Send help message */
@@ -181,28 +191,29 @@ void send_help (tlk_socket_t socket) {
  * Send users @list through @socket as a list of nicknames
  * Returns nothing
  */
-void send_list (unsigned int limit, tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) {
-
+void send_list (unsigned int limit, tlk_socket_t socket, tlk_user_t *list[MAX_USERS]) 
+{
   unsigned int i;
   tlk_user_t *aux;
 
   /* Send users list, nickname per nickname */
   send_msg(socket, "Users list\n");
-  for (i = 0; i < limit; i++) {
+  for (i = 0; i < limit; i++) 
+  {
     aux = list[i];
-    if (aux != NULL) {
+    if (aux != NULL) 
+    {
       send_msg(socket, aux -> nickname);
     }
   }
-
 }
 
 /*
  * Send UNKNOWN_CMD_MSG through @socket
  * Returns nothing
  */
-int send_unknown (tlk_socket_t socket) {
-
+int send_unknown (tlk_socket_t socket) 
+{
   char msg[MSG_SIZE];
   sprintf(msg, UNKNOWN_CMD_MSG, COMMAND_CHAR, HELP_CMD);
 
@@ -213,8 +224,8 @@ int send_unknown (tlk_socket_t socket) {
  * Enqueue a DIE_MSG for @user into @queue
  * Returns 0 on success, -1 on failure
  */
-int terminate_receiver (tlk_user_t *user, tlk_queue_t *queue) {
-
+int terminate_receiver (tlk_user_t *user, tlk_queue_t *queue) 
+{
   char error_msg[MSG_SIZE];
   snprintf(error_msg, strlen(DIE_MSG) + 1, DIE_MSG);
 
@@ -234,15 +245,14 @@ int terminate_receiver (tlk_user_t *user, tlk_queue_t *queue) {
  *   -1 on enqueuing failure,
  *   1 if listener is NULL or TALKING
  */
-int talk_session (tlk_user_t *user, tlk_queue_t *queue) {
-
+int talk_session (tlk_user_t *user, tlk_queue_t *queue) 
+{
   char msg[MSG_SIZE];
 
-  if ((user -> listener) == NULL)
-    return 1;
+  if ((user -> listener) == NULL) return 1;
 
-  if ((user -> listener) -> status == IDLE) {
-
+  if ((user -> listener) -> status == IDLE) 
+  {
     /* Start talking with listener */
     user -> status = TALKING;
     (user -> listener) -> status = TALKING;
