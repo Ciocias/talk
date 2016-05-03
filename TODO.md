@@ -1,8 +1,8 @@
 # Wanted (Dead or Alive)
 
 - [ ] Write proper docs and readme
-  + [ ] Project description
-  + [ ] Update building instructions for Windows
+  + [x] Project description
+  + [x] Building instructions
 
 ### Milestone 0.1
 - [X] All basic server commands implemented
@@ -16,7 +16,7 @@
   + [x] Sockets
   + [x] Semaphores
 - [X] Clean exit for client
-- [ ] Clean exit for server (Signal handling)
+- [x] Clean exit for server (Signal handling)
 - [ ] Write proper docs and readme
 
 ### Milestone 0.2
