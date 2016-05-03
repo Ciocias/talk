@@ -1,8 +1,7 @@
 # Wanted (Dead or Alive)
 
 - [ ] Write proper docs and readme
-  + [x] Project description
-  + [x] Building instructions
+- [ ] Clean libs namespaces
 
 ### Milestone 0.1
 - [X] All basic server commands implemented
@@ -16,8 +15,9 @@
   + [x] Sockets
   + [x] Semaphores
 - [X] Clean exit for client
-- [x] Clean exit for server (Signal handling)
+- [X] Clean exit for server (Signal handling) [Linux-only]
 - [ ] Write proper docs and readme
+- [ ] Clean libs namespaces
 
 ### Milestone 0.2
 - [ ] More to come...
