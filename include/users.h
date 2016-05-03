@@ -4,8 +4,8 @@
 #include "tlk_sockets.h"
 #include "tlk_threads.h"
 #include "tlk_semaphores.h"
-#include "tlk_msg_queue.h"
-#include "tlk_common.h"
+#include "msg_queue.h"
+#include "common.h"
 
 #define MAX_USERS_ERROR 1
 #define NICKNAME_ERROR  2

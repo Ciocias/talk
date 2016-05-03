@@ -1,4 +1,4 @@
-#include "../../include/tlk_msg_queue.h"
+#include "../../include/msg_queue.h"
 
 #include <stdlib.h>
 

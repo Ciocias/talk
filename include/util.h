@@ -2,8 +2,8 @@
 #define TLK_UTIL_H
 
 #include "tlk_sockets.h"
-#include "tlk_msg_queue.h"
-#include "tlk_users.h"
+#include "msg_queue.h"
+#include "users.h"
 
 #if defined(_WIN32) && _WIN32
 

@@ -4,10 +4,10 @@
 #include "tlk_sockets.h"
 #include "tlk_threads.h"
 #include "tlk_semaphores.h"
-#include "tlk_users.h"
-#include "tlk_msg_queue.h"
-#include "tlk_util.h"
-#include "tlk_common.h"
+#include "users.h"
+#include "msg_queue.h"
+#include "util.h"
+#include "common.h"
 
 /* Thread 'user_handler' args struct */
 typedef struct _thread_node_s {

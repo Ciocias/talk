@@ -1,5 +1,7 @@
 #include "../../include/tlk_sockets.h"
+
 #include <stdio.h>
+
 #if defined(_WIN32) && _WIN32
 
 /*

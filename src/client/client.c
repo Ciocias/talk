@@ -1,4 +1,4 @@
-#include "../../include/tlk_client.h"
+#include "../../include/client.h"
 
 /* TODO: add thread-safe stdout printing */
 
