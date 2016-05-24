@@ -1,22 +1,20 @@
 # Wanted (Dead or Alive)
 
-- [ ] Write proper docs and readme
-
-### Milestone 0.1
-- [X] All basic server commands implemented
+### Milestone 1.0
+- [x] All basic server commands implemented
   + [x] help
   + [x] list
   + [x] talk
   + [x] close
   + [x] quit
-- [X] Cross-platform libraries
+- [x] Cross-platform libraries
   + [x] Threads
   + [x] Sockets
   + [x] Semaphores
-- [X] Clean exit for client
-- [X] Clean exit for server (Signal handling) [Linux-only]
-- [X] Clean libs namespaces
-- [ ] Write proper docs and readme
+- [x] Clean exit for client
+- [x] Clean exit for server (Signal handling) [Linux-only]
+- [x] Clean libs namespaces
+- [x] Write proper docs and readme
 
-### Milestone 0.2
+### Milestone 2.0
 - [ ] More to come...
