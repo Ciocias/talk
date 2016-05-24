@@ -8,6 +8,7 @@
 #include "msg_queue.h"
 #include "util.h"
 #include "common.h"
+
 /* Initialize server data */
 unsigned short initialize_server (const char *argv[]);
 
@@ -35,10 +36,10 @@ DWORD WINAPI user_receiver (LPVOID arg);
 void * user_receiver (void *arg);
 #endif
 
-/* TODO: commands_handler description */
+/* Check whether the user issued a server command */
 int commands_handler (tlk_user_t *user, char msg[MSG_SIZE]);
 
-/* TODO: message_handler description */
+/* Analyze @msg and react accordingly */
 int message_handler (tlk_user_t *user, char msg[MSG_SIZE]);
 
 /* Chat session handler */

@@ -249,7 +249,7 @@ void * sender (void *arg)
 
     /* Read from stdin */
     /* TODO: implement a prompt function */
-    fprintf(stdout, "--> ");
+    /* fprintf(stdout, "--> "); */
     if (fgets(buf, sizeof(buf), stdin) != (char *) buf)
   	{
       if (LOG) fprintf(stderr, "[SND] Error reading from stdin\n");

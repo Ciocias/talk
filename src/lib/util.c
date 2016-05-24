@@ -203,7 +203,17 @@ void send_list (unsigned int limit, tlk_socket_t socket, tlk_user_t *list[MAX_US
     aux = list[i];
     if (aux != NULL) 
     {
-      send_msg(socket, aux -> nickname);
+      if (aux -> socket == socket)
+      {
+        char buf[MSG_SIZE];
+        sprintf(buf, "@%s", aux -> nickname);
+
+        send_msg(socket, buf);
+      }
+      else
+      {
+        send_msg(socket, aux -> nickname);
+      }
     }
   }
 }

@@ -1,7 +1,6 @@
 #ifndef TLK_COMMON_H
 #define TLK_COMMON_H
 
-#define DEBUG                1
 #define LOG                  1
 
 #define DEFAULT_IP           "127.0.0.1"
@@ -43,6 +42,6 @@
 #define BRK_DIE_MSG          "kill"
 #define UNKNOWN_CMD_MSG      "Unknown command, type %c%s for a list of available commands"
 #define IDLE_MSG             "You are idle"
-#define CLOSE_CHAT_MSG		 "Your current chat session is closed"
+#define CLOSE_CHAT_MSG		   "Your current chat session is closed"
 
 #endif /* TLK_COMMON_H */

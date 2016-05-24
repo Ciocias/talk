@@ -465,7 +465,7 @@ void * user_receiver (void *arg)
   return NULL;
 }
 
-/* TODO: commands_handler description */
+/* Check whether the user issued a server command */
 int commands_handler (tlk_user_t *user, char msg[MSG_SIZE]) 
 {
   int ret;
@@ -587,7 +587,7 @@ int commands_handler (tlk_user_t *user, char msg[MSG_SIZE])
   return 0;
 }
 
-/* TODO: message_handler description */
+/* Analyze @msg and react accordingly */
 int message_handler (tlk_user_t *user, char msg[MSG_SIZE]) 
 {
   int ret;

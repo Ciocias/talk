@@ -1,8 +1,6 @@
 cmake_minimum_required (VERSION 2.6)
 project (talk)
 
-#set (CMAKE_BUILD_TYPE Debug)
-
 if (CMAKE_COMPILER_IS_GNUCC)
     set (CMAKE_C_FLAGS "-Wall -Wextra")
 endif()

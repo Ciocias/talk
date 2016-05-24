@@ -21,7 +21,7 @@
 #include <ws2tcpip.h>
 #include <iphlpapi.h>
 
-#define TLK_SOCKET_ERRNO			  WSAGetLastError()
+#define TLK_SOCKET_ERRNO			        WSAGetLastError()
 
 #define TLK_EINTR                     WSAEINTR
 #define TLK_EAFNOSUPPORT              WSAEAFNOSUPPORT
@@ -40,7 +40,7 @@ typedef unsigned int tlk_socket_t;
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
-#define TLK_SOCKET_ERRNO			  errno
+#define TLK_SOCKET_ERRNO			        errno
 
 #define TLK_EINTR                     EINTR
 #define TLK_EAFNOSUPPORT              EAFNOSUPPORT
