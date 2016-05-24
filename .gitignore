@@ -4,3 +4,4 @@ build
 *.gcc-flags.json
 *.a
 *.o
+*.html
