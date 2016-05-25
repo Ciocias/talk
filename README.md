@@ -51,7 +51,7 @@ On **Windows** launch a terminal inside the project root
 
 ## Usage
 
-For both Windows and GNU/Linux users:
+GNU/Linux users:
 
 - To Launch a server instance
 
@@ -62,8 +62,10 @@ For both Windows and GNU/Linux users:
 - To connect as a client
 
   ```
-  ./bin/client/client <ip_address> <port_number> <nickname>
+  ./bin/client <ip_address> <port_number> <nickname>
   ```
+
+For Windows users the process is the same, except that the binaries are inside 'bin/Release'
 
 Where
   - **port_number** is a number between 1024 and 49151
